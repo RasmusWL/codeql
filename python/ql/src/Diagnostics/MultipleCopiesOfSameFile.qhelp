@@ -1,0 +1,22 @@
+<!DOCTYPE qhelp PUBLIC
+  "-//Semmle//qhelp//EN"
+  "qhelp.dtd">
+<qhelp>
+
+<overview>
+<p>
+Not good to use <code>pip install .</code> with pip 1.23 or later.
+
+See https://pip.pypa.io/en/stable/news/#v21-3
+and
+https://github.com/pypa/pip/pull/10495
+</p>
+</overview>
+
+<recommendation>
+<p>
+use <code>pip install -e .</code> instead.
+</p>
+</recommendation>
+
+</qhelp>
