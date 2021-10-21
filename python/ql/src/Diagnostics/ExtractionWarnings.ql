@@ -32,5 +32,6 @@ from SyntaxError error, File file
 where
   file = error.getFile() and
   exists(file.getRelativePath())
-select error, "Extraction failed in " + file + " with error " + error.getMessage(),
+select error,
+  "Extraction failed in " + file.getRelativePath() + " with error " + error.getMessage(),
   getWarningSeverity()

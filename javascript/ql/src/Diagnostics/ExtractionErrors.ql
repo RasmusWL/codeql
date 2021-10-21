@@ -14,5 +14,6 @@ from Error error
 where
   exists(error.getFile().getRelativePath()) and
   error.isFatal()
-select error, "Extraction failed in " + error.getFile() + " with error " + error.getMessage(),
+select error,
+  "Extraction failed in " + error.getFile().getRelativePath() + " with error " + error.getMessage(),
   getSeverity()
