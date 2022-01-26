@@ -10,7 +10,6 @@ private import semmle.python.dataflow.new.TaintTracking
 private import semmle.python.Concepts
 private import semmle.python.ApiGraphs
 private import semmle.python.frameworks.Pydantic
-private import semmle.python.frameworks.Starlette
 
 /**
  * Provides models for the `fastapi` PyPI package.
@@ -33,7 +32,7 @@ private module FastApi {
   module APIRouter {
     /** Gets a reference to an instance of `fastapi.APIRouter`. */
     API::Node instance() {
-      result = API::moduleImport("fastapi").getMember("APIRouter").getASubclass*().getReturn()
+      result = API::moduleImport("fastapi").getMember("APIRouter").getReturn()
     }
   }
 
@@ -50,7 +49,7 @@ private module FastApi {
       exists(string routeAddingMethod |
         routeAddingMethod = HTTP::httpVerbLower()
         or
-        routeAddingMethod in ["api_route", "websocket"]
+        routeAddingMethod = "api_route"
       |
         this = App::instance().getMember(routeAddingMethod).getACall()
         or
@@ -96,17 +95,6 @@ private module FastApi {
   // Response modeling
   // ---------------------------------------------------------------------------
   /**
-   * A parameter to a request handler that has a WebSocket type-annotation.
-   */
-  private class WebSocketRequestHandlerParam extends Starlette::WebSocket::InstanceSource,
-    DataFlow::ParameterNode {
-    WebSocketRequestHandlerParam() {
-      this.getParameter().getAnnotation() = Starlette::WebSocket::classRef().getAUse().asExpr() and
-      any(FastApiRouteSetup rs).getARequestHandler().getArgByName(_) = this.getParameter()
-    }
-  }
-
-  /**
    * Provides models for the `fastapi.Response` class and subclasses.
    *
    * See https://fastapi.tiangolo.com/advanced/custom-response/#response.
@@ -117,7 +105,7 @@ private module FastApi {
      */
     private API::Node getModeledResponseClass(string name) {
       name = "Response" and
-      result = API::moduleImport("fastapi").getMember(name)
+      result = API::moduleImport("fastapi").getMember("Response")
       or
       // see https://github.com/tiangolo/fastapi/blob/master/fastapi/responses.py
       name in [
@@ -161,9 +149,10 @@ private module FastApi {
       or
       // user-defined subclasses
       exists(Class cls, API::Node base |
-        base = getModeledResponseClass(_).getASubclass*() and
         cls.getABase() = base.getAUse().asExpr() and
-        responseClass.getAnImmediateUse().asExpr() = cls.getParent()
+        // since we _know_ that the base has an API Node, that means there is a subclass
+        // edge leading to the `ClassExpr` for the class.
+        responseClass.getAnImmediateUse().asExpr().(ClassExpr) = cls.getParent()
       |
         exists(Assign assign | assign = cls.getAStmt() |
           assign.getATarget().(Name).getId() = "media_type" and
@@ -227,17 +216,6 @@ private module FastApi {
     }
 
     /**
-     * A direct instantiation of a FileResponse.
-     */
-    private class FileResponseInstantiation extends ResponseInstantiation, FileSystemAccess::Range {
-      FileResponseInstantiation() { baseApiNode = getModeledResponseClass("FileResponse") }
-
-      override DataFlow::Node getAPathArgument() {
-        result in [this.getArg(0), this.getArgByName("path")]
-      }
-    }
-
-    /**
      * An implicit response from a return of FastAPI request handler.
      */
     private class FastApiRequestHandlerReturn extends HTTP::Server::HttpResponse::Range,
@@ -267,8 +245,7 @@ private module FastApi {
      * An implicit response from a return of FastAPI request handler, that has
      * `response_class` set to a `FileResponse`.
      */
-    private class FastApiRequestHandlerFileResponseReturn extends FastApiRequestHandlerReturn,
-      FileSystemAccess::Range {
+    private class FastApiRequestHandlerFileResponseReturn extends FastApiRequestHandlerReturn {
       FastApiRequestHandlerFileResponseReturn() {
         exists(API::Node responseClass |
           responseClass.getAUse() = routeSetup.getResponseClassArg() and
@@ -277,8 +254,6 @@ private module FastApi {
       }
 
       override DataFlow::Node getBody() { none() }
-
-      override DataFlow::Node getAPathArgument() { result = this }
     }
 
     /**
