@@ -94,3 +94,70 @@ async def file_upload(f1: bytes = File(None), f2: UploadFile = File(None)): # $ 
         await f2.read(), # $ MISSING: tainted
     )
     return "ok" # $ HttpResponse
+
+# --- WebSocket ---
+
+import starlette.websockets
+from fastapi import WebSocket
+
+
+assert WebSocket == starlette.websockets.WebSocket
+
+
+@app.websocket("/ws") # $ routeSetup="/ws"
+async def websocket_test(websocket: WebSocket): # $ requestHandler routedParameter=websocket
+    await websocket.accept()
+
+    ensure_tainted(
+        websocket, # $ tainted
+
+        websocket.url, # $ tainted
+
+        websocket.url.netloc, # $ tainted
+        websocket.url.path, # $ tainted
+        websocket.url.query, # $ tainted
+        websocket.url.fragment, # $ tainted
+        websocket.url.username, # $ tainted
+        websocket.url.password, # $ tainted
+        websocket.url.hostname, # $ tainted
+        websocket.url.port, # $ tainted
+
+        websocket.url.components, # $ tainted
+        websocket.url.components.netloc, # $ tainted
+        websocket.url.components.path, # $ tainted
+        websocket.url.components.query, # $ tainted
+        websocket.url.components.fragment, # $ tainted
+        websocket.url.components.username, # $ tainted
+        websocket.url.components.password, # $ tainted
+        websocket.url.components.hostname, # $ tainted
+        websocket.url.components.port, # $ tainted
+
+        websocket.headers, # $ tainted
+        websocket.headers["key"], # $ tainted
+
+        websocket.query_params, # $ tainted
+        websocket.query_params["key"], # $ tainted
+
+        websocket.cookies, # $ tainted
+        websocket.cookies["key"], # $ tainted
+
+        await websocket.receive(), # $ tainted
+        await websocket.receive_bytes(), # $ tainted
+        await websocket.receive_text(), # $ tainted
+        await websocket.receive_json(), # $ tainted
+    )
+
+    # scheme seems very unlikely to give interesting results, but very likely to give FPs.
+    ensure_not_tainted(
+        websocket.url.scheme,
+        websocket.url.components.scheme,
+    )
+
+    async for data in  websocket.iter_bytes():
+        ensure_tainted(data) # $ tainted
+
+    async for data in  websocket.iter_text():
+        ensure_tainted(data) # $ tainted
+
+    async for data in  websocket.iter_json():
+        ensure_tainted(data) # $ tainted
