@@ -467,10 +467,9 @@ class RegExpEscape extends RegExpNormalChar {
     or
     this.getUnescaped() = "t" and result = "\t"
     or
-    this.getUnescaped() = "f" and result = 12.toUnicode()
-    or
-    this.getUnescaped() = "v" and result = 11.toUnicode()
-    or
+    // TODO: Find a way to include a formfeed character
+    // this.getUnescaped() = "f" and result = ""
+    // or
     this.isUnicode() and
     result = this.getUnicode()
   }
@@ -481,7 +480,7 @@ class RegExpEscape extends RegExpNormalChar {
   override string getPrimaryQLClass() { result = "RegExpEscape" }
 
   /** Gets the part of the term following the escape character. That is e.g. "w" if the term is "\w". */
-  string getUnescaped() { result = this.getText().suffix(1) }
+  private string getUnescaped() { result = this.getText().suffix(1) }
 
   /**
    * Gets the text for this escape. That is e.g. "\w".
@@ -534,13 +533,6 @@ private int toHex(string hex) {
   result = 14 and hex = ["e", "E"]
   or
   result = 15 and hex = ["f", "F"]
-}
-
-/**
- * A word boundary, that is, a regular expression term of the form `\b`.
- */
-class RegExpWordBoundary extends RegExpSpecialChar {
-  RegExpWordBoundary() { this.getChar() = "\\b" }
 }
 
 /**
@@ -809,7 +801,7 @@ class RegExpDot extends RegExpSpecialChar {
 }
 
 /**
- * A dollar assertion `$` or `\Z` matching the end of a line.
+ * A dollar assertion `$` matching the end of a line.
  *
  * Example:
  *
@@ -818,13 +810,13 @@ class RegExpDot extends RegExpSpecialChar {
  * ```
  */
 class RegExpDollar extends RegExpSpecialChar {
-  RegExpDollar() { this.getChar() = ["$", "\\Z"] }
+  RegExpDollar() { this.getChar() = "$" }
 
   override string getPrimaryQLClass() { result = "RegExpDollar" }
 }
 
 /**
- * A caret assertion `^` or `\A` matching the beginning of a line.
+ * A caret assertion `^` matching the beginning of a line.
  *
  * Example:
  *
@@ -833,7 +825,7 @@ class RegExpDollar extends RegExpSpecialChar {
  * ```
  */
 class RegExpCaret extends RegExpSpecialChar {
-  RegExpCaret() { this.getChar() = ["^", "\\A"] }
+  RegExpCaret() { this.getChar() = "^" }
 
   override string getPrimaryQLClass() { result = "RegExpCaret" }
 }

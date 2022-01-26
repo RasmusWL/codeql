@@ -39,10 +39,6 @@ module CleartextStorage {
    * A source of sensitive data, considered as a flow source.
    */
   class SensitiveDataSourceAsSource extends Source, SensitiveDataSource {
-    SensitiveDataSourceAsSource() {
-      not SensitiveDataSource.super.getClassification() = SensitiveDataClassification::id()
-    }
-
     override SensitiveDataClassification getClassification() {
       result = SensitiveDataSource.super.getClassification()
     }

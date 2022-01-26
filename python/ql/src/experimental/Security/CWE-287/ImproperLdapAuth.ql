@@ -4,7 +4,8 @@
  * @kind problem
  * @problem.severity warning
  * @id py/improper-ldap-auth
- * @tags security
+ * @tags experimental
+ *       security
  *       external/cwe/cwe-287
  */
 

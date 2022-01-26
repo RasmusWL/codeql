@@ -10,7 +10,7 @@ private import experimental.semmle.python.Concepts
 private import semmle.python.ApiGraphs
 import semmle.python.dataflow.new.RemoteFlowSources
 
-private module ExperimentalPrivateDjango {
+private module PrivateDjango {
   private module django {
     API::Node http() { result = API::moduleImport("django").getMember("http") }
 

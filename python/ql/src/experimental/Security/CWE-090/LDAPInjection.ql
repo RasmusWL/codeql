@@ -5,7 +5,8 @@
  * @kind path-problem
  * @problem.severity error
  * @id py/ldap-injection
- * @tags security	
+ * @tags experimental	
+ *       security	
  *       external/cwe/cwe-090
  */
 

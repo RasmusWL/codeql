@@ -211,13 +211,6 @@ module SqlAlchemy {
               .getReturn()
               .getMember("begin")
               .getACall()
-        or
-        this =
-          API::moduleImport("sqlalchemy")
-              .getMember("orm")
-              .getMember("scoped_session")
-              .getReturn()
-              .getACall()
       }
     }
 
@@ -320,9 +313,9 @@ module SqlAlchemy {
      * A construction of a `sqlalchemy.sql.expression.TextClause`, which represents a
      * textual SQL string directly.
      */
-    abstract class TextClauseConstruction extends SqlConstruction::Range, DataFlow::CallCfgNode {
+    abstract class TextClauseConstruction extends DataFlow::CallCfgNode {
       /** Gets the argument that specifies the SQL text. */
-      override DataFlow::Node getSql() { result in [this.getArg(0), this.getArgByName("text")] }
+      DataFlow::Node getTextArg() { result in [this.getArg(0), this.getArgByName("text")] }
     }
 
     /** `TextClause` constructions from the `sqlalchemy` package. */

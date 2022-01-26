@@ -75,9 +75,9 @@ class ClassList extends TClassList {
     this = Empty() and result = ""
     or
     exists(ClassObjectInternal head | head = this.getHead() |
-      this.getTail() = Empty() and result = this.className(head)
+      this.getTail() = Empty() and result = className(head)
       or
-      this.getTail() != Empty() and result = this.className(head) + ", " + this.getTail().contents()
+      this.getTail() != Empty() and result = className(head) + ", " + this.getTail().contents()
     )
   }
 
@@ -331,9 +331,9 @@ private class ClassListList extends TClassListList {
 
   ClassObjectInternal bestMergeCandidate(int n) {
     exists(ClassObjectInternal head | head = this.getItem(n).getHead() |
-      this.legalMergeCandidate(head) and result = head
+      legalMergeCandidate(head) and result = head
       or
-      this.illegalMergeCandidate(head) and result = this.bestMergeCandidate(n + 1)
+      illegalMergeCandidate(head) and result = this.bestMergeCandidate(n + 1)
     )
   }
 

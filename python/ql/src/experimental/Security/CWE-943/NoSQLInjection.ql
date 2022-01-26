@@ -5,7 +5,8 @@
  * @kind path-problem
  * @problem.severity error
  * @id py/nosql-injection
- * @tags security
+ * @tags experimental
+ *       security
  *       external/cwe/cwe-943
  */
 

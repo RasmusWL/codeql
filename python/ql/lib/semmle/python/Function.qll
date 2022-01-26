@@ -18,7 +18,7 @@ class Function extends Function_, Scope, AstNode {
   override Scope getScope() { result = this.getEnclosingScope() }
 
   /** Whether this function is declared in a class */
-  predicate isMethod() { this.getEnclosingScope() instanceof Class }
+  predicate isMethod() { exists(Class cls | this.getEnclosingScope() = cls) }
 
   /** Whether this is a special method, that is does its name have the form `__xxx__` (except `__init__`) */
   predicate isSpecialMethod() {

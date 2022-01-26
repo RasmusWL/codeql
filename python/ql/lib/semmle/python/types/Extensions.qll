@@ -112,7 +112,14 @@ class BottleRoutePointToExtension extends PointsToExtension {
 
 /* Python 3.6+ regex module constants */
 string short_flag(string flag) {
-  flag in ["ASCII", "IGNORECASE", "LOCALE", "UNICODE", "MULTILINE", "TEMPLATE"] and
+  (
+    flag = "ASCII" or
+    flag = "IGNORECASE" or
+    flag = "LOCALE" or
+    flag = "UNICODE" or
+    flag = "MULTILINE" or
+    flag = "TEMPLATE"
+  ) and
   result = flag.prefix(1)
   or
   flag = "DOTALL" and result = "S"
@@ -137,17 +144,19 @@ class ReModulePointToExtension extends PointsToExtension {
       sre_constants.attribute("SRE_FLAG_" + flag, value, orig) and
       origin = orig.asCfgNodeOrHere(this)
     ) and
-    this.pointsTo_helper(context)
+    pointsTo_helper(context)
   }
 
   pragma[noinline]
   private predicate pointsTo_helper(Context context) { context.appliesTo(this) }
 }
 
-deprecated private class BackwardCompatiblePointToExtension extends PointsToExtension instanceof CustomPointsToFact {
+deprecated private class BackwardCompatiblePointToExtension extends PointsToExtension {
+  BackwardCompatiblePointToExtension() { this instanceof CustomPointsToFact }
+
   override predicate pointsTo(Context context, ObjectInternal value, ControlFlowNode origin) {
     exists(Object obj, ClassObject cls |
-      CustomPointsToFact.super.pointsTo(context, obj, cls, origin)
+      this.(CustomPointsToFact).pointsTo(context, obj, cls, origin)
     |
       value.getBuiltin() = obj
       or

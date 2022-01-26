@@ -16,7 +16,12 @@ class TwistedRequest extends TaintKind {
   }
 
   override TaintKind getTaintOfMethodResult(string name) {
-    name in ["getHeader", "getCookie", "getUser", "getPassword"] and
+    (
+      name = "getHeader" or
+      name = "getCookie" or
+      name = "getUser" or
+      name = "getPassword"
+    ) and
     result instanceof ExternalStringKind
   }
 }

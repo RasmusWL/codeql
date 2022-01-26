@@ -12,7 +12,13 @@ class FalconRequest extends TaintKind {
     name = "env" and result instanceof WsgiEnvironment
     or
     result instanceof ExternalStringKind and
-    name in ["uri", "url", "forwarded_uri", "relative_uri", "query_string"]
+    (
+      name = "uri" or
+      name = "url" or
+      name = "forwarded_uri" or
+      name = "relative_uri" or
+      name = "query_string"
+    )
     or
     result instanceof ExternalStringDictKind and
     (name = "cookies" or name = "params")
