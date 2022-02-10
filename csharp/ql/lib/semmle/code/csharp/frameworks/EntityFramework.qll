@@ -421,6 +421,7 @@ module EntityFramework {
     }
   }
 
+  // her
   private class DbContextSaveChanges extends EFSummarizedCallable {
     private DbContextClass c;
 
