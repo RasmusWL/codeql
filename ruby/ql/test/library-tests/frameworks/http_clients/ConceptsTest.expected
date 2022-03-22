@@ -1,4 +1,4 @@
-| Excon.rb:50:34:50:71 | # $ SPURIOUS: clientRequestUrlPart=url | Fixed spurious result:clientRequestUrlPart=url |
+| Excon.rb:53:34:53:71 | # $ SPURIOUS: clientRequestUrlPart=url | Fixed spurious result:clientRequestUrlPart=url |
 | Faraday.rb:3:21:3:41 | "http://example.com/" | Unexpected result: clientRequestUrlPart="http://example.com/" |
 | Faraday.rb:6:22:6:42 | "http://example.com/" | Unexpected result: clientRequestUrlPart="http://example.com/" |
 | Faraday.rb:9:21:9:41 | "http://example.com/" | Unexpected result: clientRequestUrlPart="http://example.com/" |

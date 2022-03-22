@@ -1,5 +1,8 @@
 require "excon"
 
+# maybe I wanted to add some kind of comment giving highlighting how this test file
+# works, which could take up multiple lines
+
 url = "http://example.com/"
 
 resp1 = Excon.get(url) # $ clientRequestUrlPart=url
