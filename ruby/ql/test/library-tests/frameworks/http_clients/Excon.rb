@@ -40,3 +40,11 @@ resp9.body
 
 resp10 = connection2.post(path: "/foo") # $ clientRequestUrlPart="/foo"
 resp10.body
+
+# You can give annotations, to highlight that you WANT a result here
+Excon.not_modeled_yet(url) # $ MISSING: clientRequestUrlPart=url
+
+# Likewise, you can highlight that something current _is_ modeled, but shouldn't be
+# (note that since I didn't actually change the modeling, the output of the expectation
+# test will tell us that this SPUROUS alert has been fixed)
+Excon.should_not_be_modeled(url) # $ SPURIOUS: clientRequestUrlPart=url
