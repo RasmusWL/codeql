@@ -45,37 +45,6 @@ newtype TNode =
     )
   } or
   /**
-   * A node representing the overflow positional arguments to a call.
-   * That is, `call` contains more positional arguments than there are
-   * positional parameters in `callable`. The extra ones are passed as
-   * a tuple to a starred parameter; this synthetic node represents that tuple.
-   */
-  TPosOverflowNode(CallNode call, CallableValue callable) {
-    exists(getPositionalOverflowArg(call, callable, _))
-  } or
-  /**
-   * A node representing the overflow keyword arguments to a call.
-   * That is, `call` contains keyword arguments for keys that do not have
-   * keyword parameters in `callable`. These extra ones are passed as
-   * a dictionary to a doubly starred parameter; this synthetic node
-   * represents that dictionary.
-   */
-  TKwOverflowNode(CallNode call, CallableValue callable) {
-    exists(getKeywordOverflowArg(call, callable, _))
-    or
-    ArgumentPassing::connects(call, callable) and
-    exists(call.getNode().getKwargs()) and
-    callable.getScope().hasKwArg()
-  } or
-  /**
-   * A node representing an unpacked element of a dictionary argument.
-   * That is, `call` contains argument `**{"foo": bar}` which is passed
-   * to parameter `foo` of `callable`.
-   */
-  TKwUnpackedNode(CallNode call, CallableValue callable, string name) {
-    call_unpacks(call, _, callable, name, _)
-  } or
-  /**
    * A synthetic node representing that an iterable sequence flows to consumer.
    */
   TIterableSequenceNode(UnpackingAssignmentSequenceTarget consumer) or
@@ -280,18 +249,16 @@ ExprNode exprNode(DataFlowExpr e) { result.getNode().getNode() = e }
 class ParameterNode extends CfgNode, LocalSourceNode {
   ParameterDefinition def;
 
-  ParameterNode() {
-    node = def.getDefiningNode() and
-    // Disregard parameters that we cannot resolve
-    // TODO: Make this unnecessary
-    exists(DataFlowCallable c | node = c.getParameter(_))
-  }
+  ParameterNode() { node = def.getDefiningNode() }
 
   /**
    * Holds if this node is the parameter of callable `c` at the
-   * (zero-based) index `i`.
+   * position `ppos`.
    */
-  predicate isParameterOf(DataFlowCallable c, int i) { node = c.getParameter(i) }
+  predicate isParameterOf(DataFlowCallable c, ParameterPosition ppos) {
+    // TODO(call-graph): implement this!
+    none()
+  }
 
   override DataFlowCallable getEnclosingCallable() { this.isParameterOf(result, _) }
 
@@ -304,10 +271,19 @@ ParameterNode parameterNode(Parameter p) { result.getParameter() = p }
 
 /** A data flow node that represents a call argument. */
 class ArgumentNode extends Node {
-  ArgumentNode() { this = any(DataFlowCall c).getArg(_) }
+  ArgumentNode() {
+    exists(CallNode call |
+      this.asCfgNode() = call.getArg(_)
+      or
+      this.asCfgNode() = call.getArgByName(_)
+    )
+  }
 
   /** Holds if this argument occurs at the given position in the given call. */
-  predicate argumentOf(DataFlowCall call, int pos) { this = call.getArg(pos) }
+  predicate argumentOf(DataFlowCall call, ArgumentPosition apos) {
+    // TODO(call-graph): implement this!
+    none()
+  }
 
   /** Gets the call in which this node is an argument. */
   final DataFlowCall getCall() { this.argumentOf(result, _) }
@@ -410,70 +386,6 @@ private predicate resolved_import_star_module(Module m, string name, Node n) {
     ImportStar::importStarResolvesTo(pragma[only_bind_into](nn), m) and
     nn.getId() = name
   )
-}
-
-/**
- * The node holding the extra positional arguments to a call. This node is passed as a tuple
- * to the starred parameter of the callable.
- */
-class PosOverflowNode extends Node, TPosOverflowNode {
-  CallNode call;
-
-  PosOverflowNode() { this = TPosOverflowNode(call, _) }
-
-  override string toString() { result = "PosOverflowNode for " + call.getNode().toString() }
-
-  override DataFlowCallable getEnclosingCallable() {
-    exists(Node node |
-      node = TCfgNode(call) and
-      result = node.getEnclosingCallable()
-    )
-  }
-
-  override Location getLocation() { result = call.getLocation() }
-}
-
-/**
- * The node holding the extra keyword arguments to a call. This node is passed as a dictionary
- * to the doubly starred parameter of the callable.
- */
-class KwOverflowNode extends Node, TKwOverflowNode {
-  CallNode call;
-
-  KwOverflowNode() { this = TKwOverflowNode(call, _) }
-
-  override string toString() { result = "KwOverflowNode for " + call.getNode().toString() }
-
-  override DataFlowCallable getEnclosingCallable() {
-    exists(Node node |
-      node = TCfgNode(call) and
-      result = node.getEnclosingCallable()
-    )
-  }
-
-  override Location getLocation() { result = call.getLocation() }
-}
-
-/**
- * The node representing the synthetic argument of a call that is unpacked from a dictionary
- * argument.
- */
-class KwUnpackedNode extends Node, TKwUnpackedNode {
-  CallNode call;
-  string name;
-
-  KwUnpackedNode() { this = TKwUnpackedNode(call, _, name) }
-
-  override string toString() { result = "KwUnpacked " + name }
-
-  override DataFlowCallable getEnclosingCallable() {
-    exists(Node node |
-      node = TCfgNode(call) and
-      result = node.getEnclosingCallable()
-    )
-  }
-
-  override Location getLocation() { result = call.getLocation() }
 }
 
 /**

@@ -77,7 +77,11 @@ module SyntheticPreUpdateNode {
    * that is mapped to the `self` parameter. That way, constructor calls represent the value of the
    * object after the constructor (currently only `__init__`) has run.
    */
-  CfgNode objectCreationNode() { result.getNode().(CallNode) = any(ClassCall c).getNode() }
+  CfgNode objectCreationNode() {
+    // TODO(call-graph): implement this!
+    none()
+    // result.getNode().(CallNode) = any(ClassCall c).getNode()
+  }
 }
 
 import SyntheticPreUpdateNode
@@ -134,20 +138,22 @@ module SyntheticPostUpdateNode {
    * and should not have an extra node synthesised.
    */
   Node argumentPreUpdateNode() {
-    result = any(FunctionCall c).getArg(_)
-    or
-    // Avoid argument 0 of method calls as those have read post-update nodes.
-    exists(MethodCall c, int n | n > 0 | result = c.getArg(n))
-    or
-    result = any(SpecialCall c).getArg(_)
-    or
-    // Avoid argument 0 of class calls as those have non-synthetic post-update nodes.
-    exists(ClassCall c, int n | n > 0 | result = c.getArg(n))
-    or
-    // any argument of any call that we have not been able to resolve
-    exists(CallNode call | not call = any(DataFlowCall c).getNode() |
-      result.(CfgNode).getNode() in [call.getArg(_), call.getArgByName(_)]
-    )
+    // TODO(call-graph): implement this!
+    none()
+    // result = any(FunctionCall c).getArg(_)
+    // or
+    // // Avoid argument 0 of method calls as those have read post-update nodes.
+    // exists(MethodCall c, int n | n > 0 | result = c.getArg(n))
+    // or
+    // result = any(SpecialCall c).getArg(_)
+    // or
+    // // Avoid argument 0 of class calls as those have non-synthetic post-update nodes.
+    // exists(ClassCall c, int n | n > 0 | result = c.getArg(n))
+    // or
+    // // any argument of any call that we have not been able to resolve
+    // exists(CallNode call | not call = any(DataFlowCall c).getNode() |
+    //   result.(CfgNode).getNode() in [call.getArg(_), call.getArgByName(_)]
+    // )
   }
 
   /** Gets the pre-update node associated with a store. This is used for when an object might have its value changed after a store. */
@@ -262,13 +268,6 @@ module EssaFlow {
     iterableUnpackingFlowStep(nodeFrom, nodeTo)
     or
     matchFlowStep(nodeFrom, nodeTo)
-    or
-    // Overflow keyword argument
-    exists(CallNode call, CallableValue callable |
-      call = callable.getACall() and
-      nodeTo = TKwOverflowNode(call, callable) and
-      nodeFrom.asCfgNode() = call.getNode().getKwargs().getAFlowNode()
-    )
   }
 
   predicate useToNextUse(NameNode nodeFrom, NameNode nodeTo) {
@@ -487,10 +486,6 @@ predicate storeStep(Node nodeFrom, Content c, Node nodeTo) {
   or
   attributeStoreStep(nodeFrom, c, nodeTo)
   or
-  posOverflowStoreStep(nodeFrom, c, nodeTo)
-  or
-  kwOverflowStoreStep(nodeFrom, c, nodeTo)
-  or
   matchStoreStep(nodeFrom, c, nodeTo)
   or
   any(Orm::AdditionalOrmSteps es).storeStep(nodeFrom, c, nodeTo)
@@ -633,30 +628,6 @@ predicate attributeStoreStep(Node nodeFrom, AttributeContent c, PostUpdateNode n
   )
 }
 
-/**
- * Holds if `nodeFrom` flows into the synthezised positional overflow argument (`nodeTo`)
- * at the position indicated by `c`.
- */
-predicate posOverflowStoreStep(CfgNode nodeFrom, TupleElementContent c, Node nodeTo) {
-  exists(CallNode call, CallableValue callable, int n |
-    nodeFrom.asCfgNode() = getPositionalOverflowArg(call, callable, n) and
-    nodeTo = TPosOverflowNode(call, callable) and
-    c.getIndex() = n
-  )
-}
-
-/**
- * Holds if `nodeFrom` flows into the synthezised keyword overflow argument (`nodeTo`)
- * at the key indicated by `c`.
- */
-predicate kwOverflowStoreStep(CfgNode nodeFrom, DictionaryElementContent c, Node nodeTo) {
-  exists(CallNode call, CallableValue callable, string key |
-    nodeFrom.asCfgNode() = getKeywordOverflowArg(call, callable, key) and
-    nodeTo = TKwOverflowNode(call, callable) and
-    c.getKey() = key
-  )
-}
-
 predicate defaultValueFlowStep(CfgNode nodeFrom, CfgNode nodeTo) {
   exists(Function f, Parameter p, ParameterDefinition def |
     // `getArgByName` supports, unlike `getAnArg`, keyword-only parameters
@@ -685,8 +656,6 @@ predicate readStep(Node nodeFrom, Content c, Node nodeTo) {
   forReadStep(nodeFrom, c, nodeTo)
   or
   attributeReadStep(nodeFrom, c, nodeTo)
-  or
-  kwUnpackReadStep(nodeFrom, c, nodeTo)
 }
 
 /** Data flows from a sequence to a subscript of the sequence. */
@@ -777,37 +746,11 @@ predicate attributeReadStep(Node nodeFrom, AttributeContent c, AttrRead nodeTo) 
 }
 
 /**
- * Holds if `nodeFrom` is a dictionary argument being unpacked and `nodeTo` is the
- * synthezised unpacked argument with the name indicated by `c`.
- */
-predicate kwUnpackReadStep(CfgNode nodeFrom, DictionaryElementContent c, Node nodeTo) {
-  exists(CallNode call, CallableValue callable, string name |
-    nodeFrom.asCfgNode() = call.getNode().getKwargs().getAFlowNode() and
-    nodeTo = TKwUnpackedNode(call, callable, name) and
-    name = c.getKey()
-  )
-}
-
-/**
- * Clear content at key `name` of the synthesized dictionary `TKwOverflowNode(call, callable)`,
- * whenever `call` unpacks `name`.
- */
-predicate kwOverflowClearStep(Node n, Content c) {
-  exists(CallNode call, CallableValue callable, string name |
-    call_unpacks(call, _, callable, name, _) and
-    n = TKwOverflowNode(call, callable) and
-    c.(DictionaryElementContent).getKey() = name
-  )
-}
-
-/**
  * Holds if values stored inside content `c` are cleared at node `n`. For example,
  * any value stored inside `f` is cleared at the pre-update node associated with `x`
  * in `x.f = newValue`.
  */
 predicate clearsContent(Node n, Content c) {
-  kwOverflowClearStep(n, c)
-  or
   matchClearStep(n, c)
   or
   attributeClearStep(n, c)
