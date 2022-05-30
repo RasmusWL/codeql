@@ -16,21 +16,66 @@
 private import python
 private import DataFlowPublic
 
+newtype TParameterPosition =
+  TSelfParameterPosition() or
+  TPositionalParameterPosition(int pos) { pos = any(Parameter p).getPosition() } or
+  TKeywordParameterPosition(string name) { name = any(Parameter p).getName() }
+
 /** A parameter position. */
-class ParameterPosition extends Unit {
-  // TODO(call-graph): implement this!
+class ParameterPosition extends TParameterPosition {
+  /** Holds if this position represents a `self` parameter. */
+  predicate isSelf() { this = TSelfParameterPosition() }
+
+  /** Holds if this position represents a positional parameter at (0-based) `index`. */
+  predicate isPositional(int index) { this = TPositionalParameterPosition(index) }
+
+  /** Holds if this position represents a keyword parameter named `name`. */
+  predicate isKeyword(string name) { this = TKeywordParameterPosition(name) }
+
+  /** Gets a textual representation of this element. */
+  string toString() {
+    this.isSelf() and result = "self"
+    or
+    exists(int index | this.isPositional(index) and result = "position " + index)
+    or
+    exists(string name | this.isKeyword(name) and result = "keyword " + name)
+  }
 }
 
+newtype TArgumentPosition =
+  TSelfArgumentPosition() or
+  TPositionalArgumentPosition(int pos) { exists(any(CallNode c).getArg(pos)) } or
+  TKeywordArgumentPosition(string name) { exists(any(CallNode c).getArgByName(name)) }
+
 /** An argument position. */
-abstract class ArgumentPosition extends Unit {
-  // TODO(call-graph): implement this!
+class ArgumentPosition extends TArgumentPosition {
+  /** Holds if this position represents a `self` argument. */
+  predicate isSelf() { this = TSelfArgumentPosition() }
+
+  /** Holds if this position represents a positional argument at (0-based) `index`. */
+  predicate isPositional(int index) { this = TPositionalArgumentPosition(index) }
+
+  /** Holds if this position represents a keyword argument named `name`. */
+  predicate isKeyword(string name) { this = TKeywordArgumentPosition(name) }
+
+  /** Gets a textual representation of this element. */
+  string toString() {
+    this.isSelf() and result = "self"
+    or
+    exists(int pos | this.isPositional(pos) and result = "position " + pos)
+    or
+    exists(string name | this.isKeyword(name) and result = "keyword " + name)
+  }
 }
 
 /** Holds if arguments at position `apos` match parameters at position `ppos`. */
 pragma[inline]
 predicate parameterMatch(ParameterPosition ppos, ArgumentPosition apos) {
-  // TODO(call-graph): implement this!
-  none()
+  ppos.isSelf() and apos.isSelf()
+  or
+  exists(int index | ppos.isPositional(index) and apos.isPositional(index))
+  or
+  exists(string name | ppos.isKeyword(name) and apos.isKeyword(name))
 }
 
 newtype TDataFlowCallable =
