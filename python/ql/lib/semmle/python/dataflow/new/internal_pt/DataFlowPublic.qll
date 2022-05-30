@@ -110,8 +110,6 @@ private DataFlowCallable getCallableScope(Scope s) {
   result = getCallableScope(s.getEnclosingScope())
 }
 
-private import semmle.python.internal.CachedStages
-
 /**
  * An element, viewed as a node in a data flow graph. Either an SSA variable
  * (`EssaNode`) or a control flow node (`CfgNode`).
@@ -120,7 +118,7 @@ class Node extends TNode {
   /** Gets a textual representation of this element. */
   cached
   string toString() {
-    Stages::DataFlow::ref() and
+    // Stages::DataFlow::ref() and
     result = "Data flow node"
   }
 
@@ -144,7 +142,7 @@ class Node extends TNode {
   predicate hasLocationInfo(
     string filepath, int startline, int startcolumn, int endline, int endcolumn
   ) {
-    Stages::DataFlow::ref() and
+    // Stages::DataFlow::ref() and
     this.getLocation().hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
   }
 
