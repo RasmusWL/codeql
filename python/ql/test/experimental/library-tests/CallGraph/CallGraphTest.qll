@@ -139,9 +139,13 @@ class PointsToResolver extends CallGraphResolver, TPointsToResolver {
   override string toString() { result = "PointsToResolver" }
 }
 
+private import semmle.python.dataflow.new.internal.DataFlowDispatch as TT
+
 /** A call graph resolved based on Type Trackers */
 class TypeTrackerResolver extends CallGraphResolver, TTypeTrackerResolver {
-  override predicate callEdge(Call call, Function callable) { none() }
+  override predicate callEdge(Call call, Function callable) {
+    TT::TFunction(callable) = TT::viableCallable(TT::TNormalCall(call.getAFlowNode()))
+  }
 
   override string toString() { result = "TypeTrackerResolver" }
 }
