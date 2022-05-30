@@ -27,31 +27,18 @@ string getPossibleContentName() {
   result = any(DataFlowPublic::AttrRef a).getAttributeName()
 }
 
-// /**
-//  * Gets a callable for the call where `nodeFrom` is used as the `i`'th argument.
-//  *
-//  * Helper predicate to avoid bad join order experienced in `callStep`.
-//  * This happened when `isParameterOf` was joined _before_ `getCallable`.
-//  */
-// pragma[nomagic]
-// private DataFlowPrivate::DataFlowCallable getCallableForArgument(
-//   DataFlowPublic::ArgumentNode nodeFrom, int i
-// ) {
-//   exists(DataFlowPrivate::DataFlowCall call |
-//     nodeFrom.argumentOf(call, i) and
-//     result = call.getCallable()
-//   )
-// }
-//
 /** Holds if `nodeFrom` steps to `nodeTo` by being passed as a parameter in a call. */
 predicate callStep(DataFlowPublic::ArgumentNode nodeFrom, DataFlowPublic::ParameterNode nodeTo) {
-  // TODO(call-graph): implement this!
-  none()
-  // // TODO: Support special methods?
-  // exists(DataFlowPrivate::DataFlowCallable callable, int i |
-  //   callable = getCallableForArgument(nodeFrom, i) and
-  //   nodeTo.isParameterOf(callable, i)
-  // )
+  // TODO: Fix performance problem with pandas
+  exists(
+    DataFlowPrivate::DataFlowCall call, DataFlowPrivate::DataFlowCallable callable,
+    DataFlowPrivate::ArgumentPosition apos, DataFlowPrivate::ParameterPosition ppos
+  |
+    nodeFrom = call.getArgument(apos) and
+    nodeTo = callable.getParameter(ppos) and
+    DataFlowPrivate::parameterMatch(ppos, apos) and
+    callable = call.getCallable()
+  )
 }
 
 /** Holds if `nodeFrom` steps to `nodeTo` by being returned from a call. */
