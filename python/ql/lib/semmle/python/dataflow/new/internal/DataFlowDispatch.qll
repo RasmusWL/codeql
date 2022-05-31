@@ -79,7 +79,7 @@ predicate parameterMatch(ParameterPosition ppos, ArgumentPosition apos) {
 }
 
 newtype TDataFlowCallable =
-  // TODO(call-graph): implement this!
+  TFunction(Function func) or
   /** For enclosing `ModuleVariableNode`s -- don't actually have calls. */
   TModule(Module m)
 
@@ -96,6 +96,25 @@ abstract class DataFlowCallable extends TDataFlowCallable {
 
   /** Gets the parameter at position `ppos`, if any. */
   abstract ParameterNode getParameter(ParameterPosition ppos);
+}
+
+/** A callable function. */
+class DataFlowFunction extends DataFlowCallable, TFunction {
+  Function func;
+
+  DataFlowFunction() { this = TFunction(func) }
+
+  override string toString() { result = func.toString() }
+
+  override Function getScope() { result = func }
+
+  override Location getLocation() { result = func.getLocation() }
+
+  override ParameterNode getParameter(ParameterPosition ppos) {
+    exists(int index | ppos.isPositional(index) | result.getParameter() = func.getArg(index))
+    or
+    exists(string name | ppos.isKeyword(name) | result.getParameter() = func.getArgByName(name))
+  }
 }
 
 /**
@@ -116,9 +135,7 @@ class DataFlowModuleScope extends DataFlowCallable, TModule {
   override ParameterNode getParameter(ParameterPosition ppos) { none() }
 }
 
-newtype TDataFlowCall =
-  // TODO(call-graph): implement this!
-  MkDataFlowCall()
+newtype TDataFlowCall = TNormalCall(CallNode call)
 
 /** A dataflow call. */
 abstract class DataFlowCall extends TDataFlowCall {
@@ -139,6 +156,53 @@ abstract class DataFlowCall extends TDataFlowCall {
 
   /** Gets the argument at position `apos`, if any. */
   abstract ArgumentNode getArgument(ArgumentPosition apos);
+}
+
+/**
+ * Gets a reference to the Function `func`.
+ */
+private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
+  t.start() and
+  result.asExpr() = func.getDefinition()
+  or
+  exists(TypeTracker t2 | result = functionTracker(t2, func).track(t2, t))
+}
+
+/**
+ * Gets a reference to the Function `func`.
+ */
+Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).flowsTo(result) }
+
+/** A normal call, with an underlying `CallNode`. */
+class NormalCall extends DataFlowCall, TNormalCall {
+  CallNode call;
+
+  NormalCall() { this = TNormalCall(call) }
+
+  override string toString() { result = call.toString() }
+
+  override ControlFlowNode getNode() { result = call }
+
+  override DataFlowCallable getCallable() {
+    exists(Function func |
+      call.getFunction() = functionTracker(func).asCfgNode() and
+      result.(DataFlowFunction).getScope() = func
+    )
+  }
+
+  override DataFlowCallable getEnclosingCallable() { result.getScope() = call.getScope() }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    exists(int index |
+      apos.isPositional(index) and
+      result.asCfgNode() = call.getArg(index)
+    )
+    or
+    exists(string name |
+      apos.isKeyword(name) and
+      result.asCfgNode() = call.getArgByName(name)
+    )
+  }
 }
 
 /** Gets a viable run-time target for the call `call`. */
