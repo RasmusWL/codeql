@@ -138,21 +138,10 @@ module SyntheticPostUpdateNode {
    * and should not have an extra node synthesised.
    */
   Node argumentPreUpdateNode() {
-    // TODO(call-graph): implement this!
-    none()
-    // result = any(FunctionCall c).getArg(_)
-    // or
-    // // Avoid argument 0 of method calls as those have read post-update nodes.
-    // exists(MethodCall c, int n | n > 0 | result = c.getArg(n))
-    // or
-    // result = any(SpecialCall c).getArg(_)
-    // or
-    // // Avoid argument 0 of class calls as those have non-synthetic post-update nodes.
-    // exists(ClassCall c, int n | n > 0 | result = c.getArg(n))
-    // or
-    // // any argument of any call that we have not been able to resolve
-    // exists(CallNode call | not call = any(DataFlowCall c).getNode() |
-    //   result.(CfgNode).getNode() in [call.getArg(_), call.getArgByName(_)]
+    result instanceof ArgumentNode
+    // note: we can't do the following, since that would lead to non-monotinic recursion :|
+    // exists(DataFlowCall call, ArgumentPosition pos |
+    //   result = call.getArgument(pos)
     // )
   }
 

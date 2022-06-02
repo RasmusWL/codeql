@@ -260,9 +260,6 @@ class ParameterNode extends CfgNode, LocalSourceNode {
     none()
   }
 
-  override DataFlowCallable getEnclosingCallable() { this.isParameterOf(result, _) }
-
-  /** Gets the `Parameter` this `ParameterNode` represents. */
   Parameter getParameter() { result = def.getParameter() }
 }
 
@@ -273,9 +270,9 @@ ParameterNode parameterNode(Parameter p) { result.getParameter() = p }
 class ArgumentNode extends Node {
   ArgumentNode() {
     exists(CallNode call |
-      this.asCfgNode() = call.getArg(_)
+      this.(CfgNode).getNode() = call.getArg(_)
       or
-      this.asCfgNode() = call.getArgByName(_)
+      this.(CfgNode).getNode() = call.getArgByName(_)
     )
   }
 
