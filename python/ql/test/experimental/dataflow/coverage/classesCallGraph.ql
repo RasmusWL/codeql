@@ -21,7 +21,7 @@ class CallGraphConfig extends DataFlow::Configuration {
     // exclude parameters to the SINK-functions
     not exists(DataFlowPrivate::DataFlowCallable c |
       node.(DataFlow::ParameterNode).isParameterOf(c, _) and
-      c.getName().matches("SINK_")
+      c.getQualifiedName().matches("SINK_")
     )
   }
 }
