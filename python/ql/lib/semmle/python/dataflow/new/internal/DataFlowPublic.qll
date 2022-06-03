@@ -256,8 +256,7 @@ class ParameterNode extends CfgNode, LocalSourceNode {
    * position `ppos`.
    */
   predicate isParameterOf(DataFlowCallable c, ParameterPosition ppos) {
-    // TODO(call-graph): implement this!
-    none()
+    this = c.getParameter(ppos)
   }
 
   Parameter getParameter() { result = def.getParameter() }
@@ -277,10 +276,7 @@ class ArgumentNode extends Node {
   }
 
   /** Holds if this argument occurs at the given position in the given call. */
-  predicate argumentOf(DataFlowCall call, ArgumentPosition apos) {
-    // TODO(call-graph): implement this!
-    none()
-  }
+  predicate argumentOf(DataFlowCall call, ArgumentPosition apos) { this = call.getArgument(apos) }
 
   /** Gets the call in which this node is an argument. */
   final DataFlowCall getCall() { this.argumentOf(result, _) }

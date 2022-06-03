@@ -232,9 +232,14 @@ class ReturnNode extends CfgNode {
 
 /** A data flow node that represents the output of a call. */
 class OutNode extends CfgNode {
-  OutNode() {
-    // TODO(call-graph): implement this!
-    none()
+  DataFlowCall call;
+
+  OutNode() { this.getNode() = call.getNode() }
+
+  /** Gets the underlying call, where this node is a corresponding output of kind `kind`. */
+  DataFlowCall getCall(ReturnKind kind) {
+    result = call and
+    kind = TNormalReturnKind()
   }
 }
 
@@ -242,7 +247,4 @@ class OutNode extends CfgNode {
  * Gets a node that can read the value returned from `call` with return kind
  * `kind`.
  */
-OutNode getAnOutNode(DataFlowCall call, ReturnKind kind) {
-  // TODO(call-graph): implement this!
-  none()
-}
+OutNode getAnOutNode(DataFlowCall call, ReturnKind kind) { call = result.getCall(kind) }
