@@ -68,7 +68,7 @@ c = C()
 func_obj = c.method.__func__
 
 # When an instance method object is called, the underlying function (__func__) is called, inserting the class instance (__self__) in front of the argument list. For instance, when C is a class which contains a definition for a function f(), and x is an instance of C, calling x.f(1) is equivalent to calling C.f(x, 1).
-SINK(c.method(SOURCE, C)) #$ flow="SOURCE -> c.method(..)"
+SINK(c.method(SOURCE, C)) #$ MISSING: flow="SOURCE -> c.method(..)"
 SINK(C.method(c, SOURCE, C)) #$ flow="SOURCE -> C.method(..)"
 SINK(func_obj(c, SOURCE, C)) #$ MISSING: flow="SOURCE -> func_obj(..)"
 
@@ -77,16 +77,16 @@ SINK(func_obj(c, SOURCE, C)) #$ MISSING: flow="SOURCE -> func_obj(..)"
 c_func_obj = C.classmethod.__func__
 
 # When an instance method object is derived from a class method object, the “class instance” stored in __self__ will actually be the class itself, so that calling either x.f(1) or C.f(1) is equivalent to calling f(C,1) where f is the underlying function.
-SINK(c.classmethod(SOURCE)) #$ flow="SOURCE -> c.classmethod(..)"
-SINK(C.classmethod(SOURCE)) #$ flow="SOURCE -> C.classmethod(..)"
+SINK(c.classmethod(SOURCE)) #$ MISSING: flow="SOURCE -> c.classmethod(..)"
+SINK(C.classmethod(SOURCE)) #$ MISSING: flow="SOURCE -> C.classmethod(..)"
 SINK(c_func_obj(C, SOURCE)) #$ MISSING: flow="SOURCE -> c_func_obj(..)"
 
 # When an instance method object is created by retrieving a class method object from a class or instance, its __self__ attribute is the class itself, and its __func__ attribute is the function object underlying the class method.
 s_func_obj = C.staticmethod.__func__
 
 # When an instance method object is derived from a class method object, the “class instance” stored in __self__ will actually be the class itself, so that calling either x.f(1) or C.f(1) is equivalent to calling f(C,1) where f is the underlying function.
-SINK(c.staticmethod(SOURCE)) #$ flow="SOURCE -> c.staticmethod(..)"
-SINK(C.staticmethod(SOURCE)) #$ flow="SOURCE -> C.staticmethod(..)"
+SINK(c.staticmethod(SOURCE)) #$ MISSING: flow="SOURCE -> c.staticmethod(..)"
+SINK(C.staticmethod(SOURCE)) #$ MISSING: flow="SOURCE -> C.staticmethod(..)"
 SINK(s_func_obj(SOURCE)) #$ MISSING: flow="SOURCE -> s_func_obj(..)"
 
 
@@ -165,4 +165,4 @@ customized = Customized()
 SINK(Customized.a)  #$ MISSING:flow="SOURCE, l:-8 -> customized.a"
 SINK_F(Customized.b)
 SINK(customized.a)  #$ MISSING:flow="SOURCE, l:-10 -> customized.a"
-SINK(customized.b)  #$ flow="SOURCE, l:-7 -> customized.b"
+SINK(customized.b)  #$ MISSING: flow="SOURCE, l:-7 -> customized.b"

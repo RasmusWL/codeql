@@ -393,7 +393,7 @@ def test_call_unpack_iterable():
 
 
 def test_call_unpack_mapping():
-    SINK(second(NONSOURCE, **{"b": SOURCE})) #$ flow="SOURCE -> second(..)"
+    SINK(second(NONSOURCE, **{"b": SOURCE})) #$ MISSING: flow="SOURCE -> second(..)"
 
 
 def f_extra_pos(a, *b):
@@ -401,7 +401,7 @@ def f_extra_pos(a, *b):
 
 
 def test_call_extra_pos():
-    SINK(f_extra_pos(NONSOURCE, SOURCE)) #$ flow="SOURCE -> f_extra_pos(..)"
+    SINK(f_extra_pos(NONSOURCE, SOURCE)) #$ MISSING: flow="SOURCE -> f_extra_pos(..)"
 
 
 def f_extra_keyword(a, **b):
@@ -409,7 +409,7 @@ def f_extra_keyword(a, **b):
 
 
 def test_call_extra_keyword():
-    SINK(f_extra_keyword(NONSOURCE, b=SOURCE)) #$ flow="SOURCE -> f_extra_keyword(..)"
+    SINK(f_extra_keyword(NONSOURCE, b=SOURCE)) #$ MISSING: flow="SOURCE -> f_extra_keyword(..)"
 
 
 # return the name of the first extra keyword argument
@@ -509,17 +509,17 @@ def test_lambda_unpack_mapping():
     def second(a, b):
         return b
 
-    SINK(second(NONSOURCE, **{"b": SOURCE})) #$ flow="SOURCE -> second(..)"
+    SINK(second(NONSOURCE, **{"b": SOURCE})) #$ MISSING: flow="SOURCE -> second(..)"
 
 
 def test_lambda_extra_pos():
     f_extra_pos = lambda a, *b: b[0]
-    SINK(f_extra_pos(NONSOURCE, SOURCE)) #$ flow="SOURCE -> f_extra_pos(..)"
+    SINK(f_extra_pos(NONSOURCE, SOURCE)) #$ MISSING: flow="SOURCE -> f_extra_pos(..)"
 
 
 def test_lambda_extra_keyword():
     f_extra_keyword = lambda a, **b: b["b"]
-    SINK(f_extra_keyword(NONSOURCE, b=SOURCE)) #$ flow="SOURCE -> f_extra_keyword(..)"
+    SINK(f_extra_keyword(NONSOURCE, b=SOURCE)) #$ MISSING: flow="SOURCE -> f_extra_keyword(..)"
 
 
 # call the function with our source as the name of the keyword argument
@@ -689,7 +689,7 @@ def test_iterable_star_unpacking_in_for_2():
 
 def iterate_star_args(first, second, *args):
   for arg in args:
-    SINK(arg) #$ flow="SOURCE, l:+5 -> arg" flow="SOURCE, l:+6 -> arg"
+    SINK(arg) #$ MISSING: flow="SOURCE, l:+5 -> arg" flow="SOURCE, l:+6 -> arg"
 
 # FP reported here: https://github.com/github/codeql-python-team/issues/49
 @expects(2)
