@@ -29,6 +29,9 @@ abstract class RoutingTest extends InlineExpectationsTest {
         then value = ""
         else value = this.fromValue(fromNode)
         or
+        // only have result for `func` tag if the function where `arg<n>` is used, is
+        // different from the function name of the call where `arg<n>` was specified as
+        // an argument
         tag = "func" and
         value = this.toFunc(toNode) and
         not value = this.fromFunc(fromNode)
@@ -48,6 +51,6 @@ abstract class RoutingTest extends InlineExpectationsTest {
 
   pragma[inline]
   private string toFunc(DataFlow::Node toNode) {
-    result = toNode.getEnclosingCallable().getCallableValue().getScope().getQualifiedName() // TODO: More robust pretty printing?
+    result = toNode.getEnclosingCallable().getQualifiedName()
   }
 }

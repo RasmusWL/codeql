@@ -88,6 +88,9 @@ abstract class DataFlowCallable extends TDataFlowCallable {
   /** Gets a textual representation of this element. */
   abstract string toString();
 
+  /** Gets qualified name for this callable, if any. */
+  abstract string getQualifiedName();
+
   /** Gets the scope of this callable */
   abstract Scope getScope();
 
@@ -105,6 +108,8 @@ class DataFlowFunction extends DataFlowCallable, TFunction {
   DataFlowFunction() { this = TFunction(func) }
 
   override string toString() { result = func.toString() }
+
+  override string getQualifiedName() { result = func.getQualifiedName() }
 
   override Function getScope() { result = func }
 
@@ -127,6 +132,8 @@ class DataFlowModuleScope extends DataFlowCallable, TModule {
   DataFlowModuleScope() { this = TModule(mod) }
 
   override string toString() { result = mod.toString() }
+
+  override string getQualifiedName() { result = mod.getName() }
 
   override Module getScope() { result = mod }
 
