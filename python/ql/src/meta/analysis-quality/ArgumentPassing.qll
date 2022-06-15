@@ -46,7 +46,10 @@ module TypeTrackingArgumentPassing {
       exists(node.getLocation().getFile().getRelativePath())
     }
 
-    override predicate isSink(DataFlow::Node node) { node instanceof DataFlow::ParameterNode }
+    override predicate isSink(DataFlow::Node node) {
+      node instanceof DataFlow::ParameterNode and
+      exists(node.getLocation().getFile().getRelativePath())
+    }
 
     override predicate isBarrierIn(DataFlow::Node node) { this.isSource(node) }
 
