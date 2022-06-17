@@ -1,6 +1,7 @@
 /**
  * @name Overview from using type-tracking instead of points-to, for both call-graph and
  * argument passing
+ * @kind problem
  * @id py/meta/type-tracking-overview
  * @precision very-low
  */
@@ -8,6 +9,20 @@
 import python
 import CallGraphQuality
 import ArgumentPassing
+
+/** Helper predicate to select a single valid AST node, otherwise MRVA will not show results. */
+Location firsExprLocation() {
+  result =
+    min(Expr expr, Location loc |
+      exists(loc.getFile().getRelativePath()) and
+      loc = expr.getLocation()
+    |
+      loc
+      order by
+        loc.getFile().getRelativePath(), loc.getStartLine(), loc.getStartColumn(), loc.getEndLine(),
+        loc.getEndColumn()
+    )
+}
 
 from string part, string tag, int c
 where
@@ -61,4 +76,4 @@ where
         not TypeTrackingArgumentPassing::argumentPassing(arg, param)
       )
   )
-select part, tag, c order by part, tag
+select firsExprLocation(), part + " | " + tag + " | " + c as msg order by msg desc
