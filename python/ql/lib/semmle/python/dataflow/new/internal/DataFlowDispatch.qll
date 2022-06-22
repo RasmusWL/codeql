@@ -80,7 +80,7 @@ predicate parameterMatch(ParameterPosition ppos, ArgumentPosition apos) {
 
 newtype TDataFlowCallable =
   TFunction(Function func) or
-  /** For enclosing `ModuleVariableNode`s -- don't actually have calls. */
+  /** For enclosing `ModuleVariableNode`s -- a `TModule` don't actually have calls. */
   TModule(Module m)
 
 /** A callable. */
