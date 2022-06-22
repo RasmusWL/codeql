@@ -33,6 +33,7 @@ x = MyClass(1)
 x.my_method(2) # $ call=x.my_method(..) qlclass=InstanceMethodCall arg[position 0]=2 arg[self]=x
 mm = x.my_method
 mm(2) # $ call=mm(..) qlclass=InstanceMethodCall arg[position 0]=2 arg[self]=x
+MyClass.my_method(x, 2) # $ call=MyClass.my_method(..) qlclass=MethodAsPlainFunctionCall arg[position 0]=2 arg[self]=x
 
 x.staticmethod(3) # $ arg[position 0]=3 call=x.staticmethod(..) qlclass=InstanceMethodCall arg[self]=x
 MyClass.staticmethod(3) # $ MISSING: arg[position 0]=3 call=MyClass.staticmethod(..)

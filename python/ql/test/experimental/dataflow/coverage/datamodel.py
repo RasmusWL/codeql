@@ -96,7 +96,7 @@ def test_method_call():
 
   # When an instance method object is called, the underlying function (__func__) is called, inserting the class instance (__self__) in front of the argument list. For instance, when C is a class which contains a definition for a function f(), and x is an instance of C, calling x.f(1) is equivalent to calling C.f(x, 1).
   c.method(arg1, arg2) # $ func=C.method arg1 arg2
-  C.method(c, arg1, arg2) # $ MISSING: func=C.method arg1 arg2
+  C.method(c, arg1, arg2) # $ func=C.method arg1 arg2
   func_obj(c, arg1, arg2) # $ MISSING: func=C.method arg1 arg2
 
 

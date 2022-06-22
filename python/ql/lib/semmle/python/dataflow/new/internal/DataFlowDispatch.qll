@@ -195,6 +195,20 @@ abstract class DataFlowCall extends TDataFlowCall {
   abstract ArgumentNode getArgument(ArgumentPosition apos);
 }
 
+/** Holds if the function has a `staticmethod` decorator. */
+predicate hasStaticmethodDecorator(Function func) {
+  exists(NameNode id | id.getId() = "staticmethod" and id.isGlobal() |
+    func.getADecorator() = id.getNode()
+  )
+}
+
+/** Holds if the function has a `classmethod` decorator. */
+predicate hasClassmethodDecorator(Function func) {
+  exists(NameNode id | id.getId() = "classmethod" and id.isGlobal() |
+    func.getADecorator() = id.getNode()
+  )
+}
+
 /**
  * Gets a reference to the Function `func`.
  */
@@ -245,6 +259,45 @@ class FunctionCall extends NormalCall {
   }
 
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+}
+
+/**
+ * A call to method on a class, not going through an instance method, such as
+ *
+ * ```py
+ * class Foo:
+ *     def method(self, arg):
+ *         pass
+ *
+ * foo = Foo()
+ * Foo.method(foo, 42)
+ * ```
+ */
+class MethodAsPlainFunctionCall extends NormalCall {
+  Function target;
+
+  MethodAsPlainFunctionCall() {
+    call.getFunction() = functionTracker(target).asCfgNode() and
+    exists(Class cls | cls.getAMethod() = target) and
+    not hasStaticmethodDecorator(target) and
+    not hasClassmethodDecorator(target)
+  }
+
+  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    apos.isSelf() and result.asCfgNode() = call.getArg(0)
+    or
+    exists(int index |
+      apos.isPositional(index) and
+      result.asCfgNode() = call.getArg(index + 1)
+    )
+    or
+    exists(string name |
+      apos.isKeyword(name) and
+      result.asCfgNode() = call.getArgByName(name)
+    )
+  }
 }
 
 private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
