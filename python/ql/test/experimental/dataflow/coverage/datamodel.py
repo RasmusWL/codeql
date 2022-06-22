@@ -120,8 +120,8 @@ def test_staticmethod_call():
     print("OK")
 
   # When an instance method object is derived from a class method object, the “class instance” stored in __self__ will actually be the class itself, so that calling either x.f(1) or C.f(1) is equivalent to calling f(C,1) where f is the underlying function.
-  c.staticmethod(arg1, arg2) # $ MISSING: func=C.staticmethod arg1 arg2
-  C.staticmethod(arg1, arg2) # $ MISSING: func=C.staticmethod arg1 arg2
+  c.staticmethod(arg1, arg2) # $ func=C.staticmethod arg1 arg2
+  C.staticmethod(arg1, arg2) # $ func=C.staticmethod arg1 arg2
 
 
 # Generator functions

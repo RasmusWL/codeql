@@ -131,13 +131,13 @@ class DataFlowPlainFunction extends DataFlowFunction {
   }
 }
 
-/** A method. */
+/** A method, except staticmethods. */
 class DataFlowMethod extends DataFlowFunction {
   Class cls;
 
   DataFlowMethod() {
-    cls.getAMethod() = func
-    // TODO: properly handle classmethod and staticmethod
+    cls.getAMethod() = func and
+    not hasStaticmethodDecorator(func)
   }
 
   /** Gets the class this function is a method of. */
@@ -147,6 +147,25 @@ class DataFlowMethod extends DataFlowFunction {
     ppos.isSelf() and result.getParameter() = func.getArg(0)
     or
     exists(int index | ppos.isPositional(index) | result.getParameter() = func.getArg(index + 1))
+    or
+    exists(string name | ppos.isKeyword(name) | result.getParameter() = func.getArgByName(name))
+  }
+}
+
+/** A staticmethod. */
+class DataFlowStaticmethod extends DataFlowFunction {
+  Class cls;
+
+  DataFlowStaticmethod() {
+    cls.getAMethod() = func and
+    hasStaticmethodDecorator(func)
+  }
+
+  /** Gets the class this function is a method of. */
+  Class getClass() { result = cls }
+
+  override ParameterNode getParameter(ParameterPosition ppos) {
+    exists(int index | ppos.isPositional(index) | result.getParameter() = func.getArg(index))
     or
     exists(string name | ppos.isKeyword(name) | result.getParameter() = func.getArgByName(name))
   }
@@ -214,7 +233,13 @@ predicate hasClassmethodDecorator(Function func) {
  */
 private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
   t.start() and
-  result.asExpr() = func.getDefinition()
+  (
+    result.asExpr() = func.getDefinition()
+    or
+    // when a function is decorated, it's the result of the (last) decorator call that
+    // is used
+    result.asExpr() = func.getDefinition().(FunctionExpr).getADecoratorCall()
+  )
   or
   exists(TypeTracker t2 | result = functionTracker(t2, func).track(t2, t))
 }
@@ -249,13 +274,20 @@ abstract class NormalCall extends DataFlowCall, TNormalCall {
   }
 }
 
-/** A call to a plain function, not including methods. */
+/**
+ * A call to a plain function, not including methods in general, but including
+ * staticmethods accessed on a class reference (`MyClass.my_staticmethod()`).
+ */
 class FunctionCall extends NormalCall {
   Function target;
 
   FunctionCall() {
     call.getFunction() = functionTracker(target).asCfgNode() and
-    not exists(Class cls | cls.getAMethod() = target)
+    (
+      not exists(Class cls | cls.getAMethod() = target)
+      or
+      hasStaticmethodDecorator(target)
+    )
   }
 
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
