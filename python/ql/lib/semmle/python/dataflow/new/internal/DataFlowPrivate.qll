@@ -138,8 +138,24 @@ module SyntheticPostUpdateNode {
    * and should not have an extra node synthesised.
    */
   Node argumentPreUpdateNode() {
-    result instanceof ArgumentNode
-    // note: we can't do the following, since that would lead to non-monotinic recursion :|
+    exists(CallNode call |
+      result.(CfgNode).getNode() = call.getArg(_)
+      or
+      result.(CfgNode).getNode() = call.getArgByName(_)
+    )
+    // we also want `obj` in `obj.method()` to be an argument, for the `self` parameter.
+    // It would be obvious to add `result = any(AttrRead attr | attr.getObject())`,
+    // however we can't do that due to non-monotonic recursion.
+    //
+    // Besides, the two things we are interested in from `AttrRead` are `obj` in
+    // `obj.name` and `obj` in `getattr(obj, "name")`. The first is covered by the
+    // AttrNode handling in storePreUpdateNode/readPreUpdateNode, and the second is
+    // handled by the getArg/getArgByName above.
+    //
+    // We could consider merging storePreUpdateNode/readPreUpdateNode with this predicate,
+    // since the labels don't seem to give too much value since there is such a big overlap.
+    //
+    // note: we can't do the following, since that would lead to non-monotonic recursion :|
     // exists(DataFlowCall call, ArgumentPosition pos |
     //   result = call.getArgument(pos)
     // )

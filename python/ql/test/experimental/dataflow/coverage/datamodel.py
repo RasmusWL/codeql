@@ -95,9 +95,9 @@ def test_method_call():
   func_obj = c.method.__func__
 
   # When an instance method object is called, the underlying function (__func__) is called, inserting the class instance (__self__) in front of the argument list. For instance, when C is a class which contains a definition for a function f(), and x is an instance of C, calling x.f(1) is equivalent to calling C.f(x, 1).
-  c.method(arg1, arg2)
-  C.method(c, arg1, arg2) # $ func=C.method arg1 arg2
-  func_obj(c, arg1, arg2)
+  c.method(arg1, arg2) # $ func=C.method arg1 arg2
+  C.method(c, arg1, arg2) # $ MISSING: func=C.method arg1 arg2
+  func_obj(c, arg1, arg2) # $ MISSING: func=C.method arg1 arg2
 
 
 @expects(6)
@@ -106,9 +106,9 @@ def test_classmethod_call():
   c_func_obj = C.classmethod.__func__
 
   # When an instance method object is derived from a class method object, the “class instance” stored in __self__ will actually be the class itself, so that calling either x.f(1) or C.f(1) is equivalent to calling f(C,1) where f is the underlying function.
-  c.classmethod(arg1, arg2)
-  C.classmethod(arg1, arg2)
-  c_func_obj(C, arg1, arg2)
+  c.classmethod(arg1, arg2) # $ func=C.classmethod arg1 arg2
+  C.classmethod(arg1, arg2) # $ MISSING: func=C.classmethod arg1 arg2
+  c_func_obj(C, arg1, arg2) # $ MISSING: func=C.classmethod arg1 arg2
 
 
 @expects(5)
@@ -120,8 +120,8 @@ def test_staticmethod_call():
     print("OK")
 
   # When an instance method object is derived from a class method object, the “class instance” stored in __self__ will actually be the class itself, so that calling either x.f(1) or C.f(1) is equivalent to calling f(C,1) where f is the underlying function.
-  c.staticmethod(arg1, arg2)
-  C.staticmethod(arg1, arg2)
+  c.staticmethod(arg1, arg2) # $ MISSING: func=C.staticmethod arg1 arg2
+  C.staticmethod(arg1, arg2) # $ MISSING: func=C.staticmethod arg1 arg2
 
 
 # Generator functions

@@ -11,6 +11,10 @@
  * additional data-flow steps for the arguments/parameters. This means we cannot have
  * any special logic that requires an AST call to be made before we care to figure out
  * what callable this call might end up targeting.
+ *
+ * Specifically this means that we cannot use type-backtrackes from the function of a
+ * `CallNode`, since there is no `CallNode` to backtrack from for `func` in the example
+ * above.
  */
 
 private import python
@@ -102,7 +106,7 @@ abstract class DataFlowCallable extends TDataFlowCallable {
 }
 
 /** A callable function. */
-class DataFlowFunction extends DataFlowCallable, TFunction {
+abstract class DataFlowFunction extends DataFlowCallable, TFunction {
   Function func;
 
   DataFlowFunction() { this = TFunction(func) }
@@ -114,9 +118,35 @@ class DataFlowFunction extends DataFlowCallable, TFunction {
   override Function getScope() { result = func }
 
   override Location getLocation() { result = func.getLocation() }
+}
+
+/** A plain (non-method) function. */
+class DataFlowPlainFunction extends DataFlowFunction {
+  DataFlowPlainFunction() { not exists(Class cls | cls.getAMethod() = func) }
 
   override ParameterNode getParameter(ParameterPosition ppos) {
     exists(int index | ppos.isPositional(index) | result.getParameter() = func.getArg(index))
+    or
+    exists(string name | ppos.isKeyword(name) | result.getParameter() = func.getArgByName(name))
+  }
+}
+
+/** A method. */
+class DataFlowMethod extends DataFlowFunction {
+  Class cls;
+
+  DataFlowMethod() {
+    cls.getAMethod() = func
+    // TODO: properly handle classmethod and staticmethod
+  }
+
+  /** Gets the class this function is a method of. */
+  Class getClass() { result = cls }
+
+  override ParameterNode getParameter(ParameterPosition ppos) {
+    ppos.isSelf() and result.getParameter() = func.getArg(0)
+    or
+    exists(int index | ppos.isPositional(index) | result.getParameter() = func.getArg(index + 1))
     or
     exists(string name | ppos.isKeyword(name) | result.getParameter() = func.getArgByName(name))
   }
@@ -181,7 +211,7 @@ private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
 Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).flowsTo(result) }
 
 /** A normal call, with an underlying `CallNode`. */
-class NormalCall extends DataFlowCall, TNormalCall {
+abstract class NormalCall extends DataFlowCall, TNormalCall {
   CallNode call;
 
   NormalCall() { this = TNormalCall(call) }
@@ -189,13 +219,6 @@ class NormalCall extends DataFlowCall, TNormalCall {
   override string toString() { result = call.toString() }
 
   override ControlFlowNode getNode() { result = call }
-
-  override DataFlowCallable getCallable() {
-    exists(Function func |
-      call.getFunction() = functionTracker(func).asCfgNode() and
-      result.(DataFlowFunction).getScope() = func
-    )
-  }
 
   override DataFlowCallable getEnclosingCallable() { result.getScope() = call.getScope() }
 
@@ -209,6 +232,85 @@ class NormalCall extends DataFlowCall, TNormalCall {
       apos.isKeyword(name) and
       result.asCfgNode() = call.getArgByName(name)
     )
+  }
+}
+
+/** A call to a plain function, not including methods. */
+class FunctionCall extends NormalCall {
+  Function target;
+
+  FunctionCall() {
+    call.getFunction() = functionTracker(target).asCfgNode() and
+    not exists(Class cls | cls.getAMethod() = target)
+  }
+
+  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+}
+
+private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
+  t.start() and
+  result.asExpr() = cls.getParent()
+  or
+  exists(TypeTracker t2 | result = classTracker(t2, cls).track(t2, t))
+}
+
+Node classTracker(Class cls) { classTracker(TypeTracker::end(), cls).flowsTo(result) }
+
+private TypeTrackingNode classInstanceTracker(TypeTracker t, Class cls) {
+  t.start() and
+  result.(CallCfgNode).getFunction() = classTracker(cls)
+  or
+  exists(TypeTracker t2 | result = classInstanceTracker(t2, cls).track(t2, t))
+}
+
+Node classInstanceTracker(Class cls) {
+  classInstanceTracker(TypeTracker::end(), cls).flowsTo(result)
+}
+
+private TypeTrackingNode classInstanceAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = classInstanceTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = classInstanceAttrTracker(t2, attr).track(t2, t))
+}
+
+Node classInstanceAttrTracker(AttrRead attr) {
+  classInstanceAttrTracker(TypeTracker::end(), attr).flowsTo(result)
+}
+
+/**
+ * A call to an instance method.
+ *
+ * See 'instance methods' in https://docs.python.org/3/reference/datamodel.html
+ */
+class InstanceMethodCall extends NormalCall {
+  string attrName;
+  Class cls;
+  Node self;
+
+  InstanceMethodCall() {
+    exists(AttrRead attr |
+      call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
+      attr.accesses(self, attrName) and
+      self = classInstanceTracker(cls)
+    )
+  }
+
+  override DataFlowCallable getCallable() {
+    exists(Function target |
+      cls.getAMethod() = target and
+      target.getName() = attrName
+    |
+      result.(DataFlowFunction).getScope() = target
+    )
+  }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    result = super.getArgument(apos)
+    or
+    apos.isSelf() and
+    result = self
   }
 }
 

@@ -265,13 +265,30 @@ class ParameterNode extends CfgNode, LocalSourceNode {
 /** Gets a node corresponding to parameter `p`. */
 ParameterNode parameterNode(Parameter p) { result.getParameter() = p }
 
-/** A data flow node that represents a call argument. */
+/**
+ * A data flow node that could be used as an argument in a call.
+ *
+ * To handle bound-methods, we treat the object of any attribute read as a `self`
+ * argument, which makes this an overapproximation. If you only want nodes that are
+ * guaranteed to be used in a call, check that `argumentOf` predicate has a result.
+ * (This is not allowed in the char-pred, since it leads to non-monotonic recursion)
+ */
 class ArgumentNode extends Node {
   ArgumentNode() {
     exists(CallNode call |
       this.(CfgNode).getNode() = call.getArg(_)
       or
       this.(CfgNode).getNode() = call.getArgByName(_)
+    )
+    or
+    // `self` for instance method calls
+    exists(AttrRead read |
+      // we don't ever want to treat the module in `from module import attr` as `self`,
+      // so we exclude these. (Since the ModuleAttributeImportAsAttrRead isn't exposed
+      // directly, we can't test for that, but have to do a .getNode workaround instead)
+      not read.(CfgNode).getNode() instanceof ImportMemberNode
+    |
+      read.getObject() = this
     )
   }
 
