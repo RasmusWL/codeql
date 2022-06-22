@@ -341,6 +341,16 @@ private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
 
 Node classTracker(Class cls) { classTracker(TypeTracker::end(), cls).flowsTo(result) }
 
+private TypeTrackingNode classAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = classTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = classAttrTracker(t2, attr).track(t2, t))
+}
+
+Node classAttrTracker(AttrRead attr) { classAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
+
 private TypeTrackingNode classInstanceTracker(TypeTracker t, Class cls) {
   t.start() and
   result.(CallCfgNode).getFunction() = classTracker(cls)
@@ -382,14 +392,52 @@ class InstanceMethodCall extends NormalCall {
     )
   }
 
-  override DataFlowCallable getCallable() {
-    exists(Function target |
-      cls.getAMethod() = target and
-      target.getName() = attrName
-    |
-      result.(DataFlowFunction).getScope() = target
-    )
+  Function getTargetFunction() {
+    cls.getAMethod() = result and
+    result.getName() = attrName
+    // TODO: The fact that this QL class handles `x.staticmethod(3)` is also a bit strange :sus:
+    // since staticmethods are not actually instance methods :|
   }
+
+  override DataFlowCallable getCallable() {
+    result.(DataFlowFunction).getScope() = this.getTargetFunction()
+  }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    result = super.getArgument(apos)
+    or
+    apos.isSelf() and
+    result = self and
+    // We should not hass `self` when `self` is a class instance, and target a classmethod
+    // (Python will get the class of the class instance, which will be used as the "self"/cls
+    // argument)
+    not hasClassmethodDecorator(this.getTargetFunction())
+  }
+}
+
+/** A call to a classmethod, obtained from a class */
+class ClassmethodCall extends NormalCall {
+  string attrName;
+  Class cls;
+  Node self;
+  Function target;
+
+  ClassmethodCall() {
+    exists(AttrRead attr |
+      call.getFunction() = classAttrTracker(attr).asCfgNode() and
+      attr.accesses(self, attrName) and
+      self = classTracker(cls)
+    ) and
+    // TODO: this bit of code should be shared between ClassmethodCall and InstanceMethodCall
+    // Should also consider whether InstanceMethodCall is really the right name, since classmethods are
+    // part of instance methods :|
+    cls.getAMethod() = target and
+    target.getName() = attrName and
+    not hasStaticmethodDecorator(target) and
+    hasClassmethodDecorator(target)
+  }
+
+  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
 
   override ArgumentNode getArgument(ArgumentPosition apos) {
     result = super.getArgument(apos)

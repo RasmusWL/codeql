@@ -38,8 +38,8 @@ MyClass.my_method(x, 2) # $ call=MyClass.my_method(..) qlclass=MethodAsPlainFunc
 x.staticmethod(3) # $ arg[position 0]=3 call=x.staticmethod(..) qlclass=InstanceMethodCall arg[self]=x
 MyClass.staticmethod(3) # $ arg[position 0]=3 call=MyClass.staticmethod(..) qlclass=FunctionCall
 
-x.classmethod(4) # $ arg[position 0]=4 call=x.classmethod(..) qlclass=InstanceMethodCall SPURIOUS: arg[self]=x
-MyClass.classmethod(4) # $ MISSING: arg[position 0]=4 call=MyClass.classmethod(..)
+x.classmethod(4) # $ arg[position 0]=4 call=x.classmethod(..) qlclass=InstanceMethodCall
+MyClass.classmethod(4) # $ arg[position 0]=4 call=MyClass.classmethod(..) arg[self]=MyClass qlclass=ClassmethodCall
 
 x[5] # $ MISSING: call=x[5] qlclass=SpecialCall arg[self]=x arg[position 0]=5
 

@@ -107,7 +107,7 @@ def test_classmethod_call():
 
   # When an instance method object is derived from a class method object, the “class instance” stored in __self__ will actually be the class itself, so that calling either x.f(1) or C.f(1) is equivalent to calling f(C,1) where f is the underlying function.
   c.classmethod(arg1, arg2) # $ func=C.classmethod arg1 arg2
-  C.classmethod(arg1, arg2) # $ MISSING: func=C.classmethod arg1 arg2
+  C.classmethod(arg1, arg2) # $ func=C.classmethod arg1 arg2
   c_func_obj(C, arg1, arg2) # $ MISSING: func=C.classmethod arg1 arg2
 
 
