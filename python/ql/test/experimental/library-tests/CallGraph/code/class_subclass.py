@@ -70,3 +70,100 @@ class F(D, C):
 
 f = F(42)
 f.some_method() # $ pt,tt=D.some_method SPURIOUS: tt=C.some_method
+
+# ------------------------------------------------------------------------------
+# self/cls in methods
+# ------------------------------------------------------------------------------
+
+class Base(object):
+    def foo(self):
+        print('Base.foo')
+
+    def bar(self):
+        print('Base.bar')
+
+    def call_stuff(self):
+        self.foo() # $ pt=Base.foo pt=Sub.foo pt=Mixin.foo
+        self.bar() # $ pt=Base.bar
+
+        self.sm() # $ pt=Base.sm
+        self.cm() # $ pt=Base.cm
+
+        self.sm2() # $ pt=Base.sm2 pt=Sub.sm2
+        self.cm2() # $ pt=Base.cm2 pt=Sub.cm2
+
+    @staticmethod
+    def sm():
+        print("Base.sm")
+
+    @classmethod
+    def cm(cls):
+        print("Base.cm")
+
+    @staticmethod
+    def sm2():
+        print("Base.sm2")
+
+    @classmethod
+    def cm2(cls):
+        print("Base.cm2")
+
+    @classmethod
+    def call_from_cm(cls):
+        cls.sm() # $ pt=Base.sm
+        cls.cm() # $ pt=Base.cm
+
+        cls.sm2() # $ pt=Base.sm2 pt=Sub.sm2
+        cls.cm2() # $ pt=Base.cm2 pt=Sub.cm2
+
+base = Base()
+print("! base.call_stuff()")
+base.call_stuff() # $ pt,tt=Base.call_stuff
+print("! Base.call_from_cm()")
+Base.call_from_cm() # $ pt,tt=Base.call_from_cm
+
+class Sub(Base):
+    def foo(self):
+        print("Sub.foo")
+
+    def foo_on_super(self):
+        sup = super()
+        sup.foo() # $ pt=Base.foo
+
+    def also_call_stuff(self):
+        self.sm() # $ pt=Base.sm
+        self.cm() # $ pt=Base.cm
+
+        self.sm2() # $ pt=Sub.sm2
+        self.cm2() # $ pt=Sub.cm2
+
+    @staticmethod
+    def sm2():
+        print("Sub.sm2")
+
+    @classmethod
+    def cm2(cls):
+        print("Sub.cm2")
+
+sub = Sub()
+print("! sub.foo_on_super()")
+sub.foo_on_super() # $ pt,tt=Sub.foo_on_super
+print("! sub.call_stuff()")
+sub.call_stuff() # $ pt,tt=Base.call_stuff
+print("! sub.also_call_stuff()")
+sub.also_call_stuff() # $ pt,tt=Sub.also_call_stuff
+print("! Sub.call_from_cm()")
+Sub.call_from_cm() # $ pt,tt=Base.call_from_cm
+
+
+class Mixin(object):
+    def foo(self):
+        print("Mixin.foo")
+
+class SubWithMixin(Mixin, Base):
+    # the ordering here means that in Base.call_stuff, the call to self.foo will go to Mixin.foo
+    pass
+
+swm = SubWithMixin()
+print("! swm.call_stuff()")
+swm.call_stuff() # $ pt,tt=Base.call_stuff
