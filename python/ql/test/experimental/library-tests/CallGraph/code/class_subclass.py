@@ -52,7 +52,7 @@ class C(A):
         print('C.some_method', self)
 
 c = C(42)
-c.some_method() # $ pt,tt=C.some_method SPURIOUS: tt=A.some_method
+c.some_method() # $ pt,tt=C.some_method
 
 
 class D(object):
@@ -63,10 +63,10 @@ class E(C, D):
     pass
 
 e = E(42)
-e.some_method() # $ pt,tt=C.some_method SPURIOUS: tt=A.some_method tt=D.some_method
+e.some_method() # $ pt,tt=C.some_method SPURIOUS: tt=D.some_method
 
 class F(D, C):
     pass
 
 f = F(42)
-f.some_method() # $ pt,tt=D.some_method SPURIOUS: tt=A.some_method tt=C.some_method
+f.some_method() # $ pt,tt=D.some_method SPURIOUS: tt=C.some_method

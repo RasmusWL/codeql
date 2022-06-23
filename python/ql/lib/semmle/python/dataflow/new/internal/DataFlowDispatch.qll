@@ -332,8 +332,24 @@ Node classInstanceAttrTracker(AttrRead attr) {
 }
 
 /** Gets a direct superclass of the argument `cls`, if any. */
-Class getADirectSuperclass(Class cls) {
-  cls.getABase() = classTracker(result).asExpr()
+Class getADirectSuperclass(Class cls) { cls.getABase() = classTracker(result).asExpr() }
+
+/**
+ * Gets a first function called `name` in subclass search starting in `cls`.
+ *
+ * Note that this does NOT follow MRO precisely, so if you have `class C(A, B)`,
+ * and _both_ `A` and `B` defines a method with `name`, you will get both of them as
+ * results.
+ *
+ * However, in the case where there is no multiple inheritance, this will give a precise
+ * answer.
+ */
+Function findFunctionStartingInClass(Class cls, string name) {
+  result = cls.getAMethod() and
+  result.getName() = name
+  or
+  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
+  result = findFunctionStartingInClass(getADirectSuperclass(cls), name)
 }
 
 /**
@@ -344,22 +360,19 @@ Class getADirectSuperclass(Class cls) {
  */
 abstract class MethodCall extends NormalCall {
   Function target;
+  string functionName;
   Class cls;
   AttrRead attr;
 
   MethodCall() {
-    // Note: This is a simple approach, so if we have a A > B > C subclass relationship,
-    // and all classes define a method with `name`, we will model _all_ of them as
-    // targets, although that obviously can't be the case. The idea is to try this
-    // simple approach, which is what JS does currently, and if it is too imprecesise we
-    // can make it smarter.
-    target = getADirectSuperclass*(cls).getAMethod() and
+    target = findFunctionStartingInClass(cls, functionName) and
+    target.getName() = functionName and
     (
       call.getFunction() = classAttrTracker(attr).asCfgNode() and
-      attr.accesses(classTracker(cls), target.getName())
+      attr.accesses(classTracker(cls), functionName)
       or
       call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
-      attr.accesses(classInstanceTracker(cls), target.getName())
+      attr.accesses(classInstanceTracker(cls), functionName)
     )
   }
 
@@ -376,7 +389,7 @@ class NormalMethodCall extends MethodCall {
   Node self;
 
   NormalMethodCall() {
-    attr.accesses(self, target.getName()) and
+    attr.accesses(self, functionName) and
     self = classInstanceTracker(cls) and
     not hasStaticmethodDecorator(target) and
     not hasClassmethodDecorator(target)
@@ -404,7 +417,7 @@ class NormalMethodCall extends MethodCall {
  */
 class MethodAsPlainFunctionCall extends MethodCall {
   MethodAsPlainFunctionCall() {
-    attr.getObject() = classTracker(cls) and
+    attr.accesses(classTracker(cls), functionName) and
     not hasStaticmethodDecorator(target) and
     not hasClassmethodDecorator(target)
   }
@@ -429,7 +442,7 @@ class ClassmethodCall extends MethodCall {
   Node self;
 
   ClassmethodCall() {
-    attr.accesses(self, target.getName()) and
+    attr.accesses(self, functionName) and
     hasClassmethodDecorator(target)
   }
 
@@ -445,9 +458,7 @@ class ClassmethodCall extends MethodCall {
 
 /** A call to a staticmethod. */
 class StaticmethodCall extends MethodCall {
-  StaticmethodCall() {
-    hasStaticmethodDecorator(target)
-  }
+  StaticmethodCall() { hasStaticmethodDecorator(target) }
 }
 
 /** Gets a viable run-time target for the call `call`. */

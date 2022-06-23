@@ -5,9 +5,6 @@ debug_callableNotUnique
 | code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
 pointsTo_found_typeTracker_notFound
 pointsTo_notFound_typeTracker_found
-| code/class_subclass.py:55:1:55:15 | ControlFlowNode for Attribute() | A.some_method |
-| code/class_subclass.py:66:1:66:15 | ControlFlowNode for Attribute() | A.some_method |
 | code/class_subclass.py:66:1:66:15 | ControlFlowNode for Attribute() | D.some_method |
-| code/class_subclass.py:72:1:72:15 | ControlFlowNode for Attribute() | A.some_method |
 | code/class_subclass.py:72:1:72:15 | ControlFlowNode for Attribute() | C.some_method |
 | code/underscore_prefix_func_name.py:14:5:14:19 | ControlFlowNode for some_function() | some_function |
