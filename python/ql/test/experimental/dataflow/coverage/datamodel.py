@@ -133,18 +133,18 @@ sc = SC()
 def test_subclass_method_call():
   func_obj = sc.method.__func__
 
-  sc.method(arg1, arg2) # $ MISSING: func=SC.method arg1 arg2
-  SC.method(sc, arg1, arg2) # $ MISSING: func=SC.method arg1 arg2
-  func_obj(sc, arg1, arg2) # $ MISSING: func=SC.method arg1 arg2
+  sc.method(arg1, arg2) # $ func=C.method arg1 arg2
+  SC.method(sc, arg1, arg2) # $ func=C.method arg1 arg2
+  func_obj(sc, arg1, arg2) # $ MISSING: func=C.method arg1 arg2
 
 
 @expects(6)
 def test_subclass_classmethod_call():
   c_func_obj = SC.classmethod.__func__
 
-  sc.classmethod(arg1, arg2) # $ MISSING: func=SC.classmethod arg1 arg2
-  SC.classmethod(arg1, arg2) # $ MISSING: func=SC.classmethod arg1 arg2
-  c_func_obj(SC, arg1, arg2) # $ MISSING: func=SC.classmethod arg1 arg2
+  sc.classmethod(arg1, arg2) # $ func=C.classmethod arg1 arg2
+  SC.classmethod(arg1, arg2) # $ func=C.classmethod arg1 arg2
+  c_func_obj(SC, arg1, arg2) # $ MISSING: func=C.classmethod arg1 arg2
 
 
 @expects(5)
@@ -154,8 +154,8 @@ def test_subclass_staticmethod_call():
   except AttributeError:
     print("OK")
 
-  sc.staticmethod(arg1, arg2) # $ MISSING: func=SC.staticmethod arg1 arg2
-  SC.staticmethod(arg1, arg2) # $ MISSING: func=SC.staticmethod arg1 arg2
+  sc.staticmethod(arg1, arg2) # $ func=C.staticmethod arg1 arg2
+  SC.staticmethod(arg1, arg2) # $ func=C.staticmethod arg1 arg2
 
 
 # Generator functions

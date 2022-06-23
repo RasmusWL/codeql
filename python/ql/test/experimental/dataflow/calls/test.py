@@ -48,16 +48,16 @@ class Subclass(MyClass):
 
 y = Subclass(1)
 
-y.my_method(2) # $ MISSING: call=y.my_method(..) arg[position 0]=2 arg[self]=y qlclass=NormalMethodCall
+y.my_method(2) # $ call=y.my_method(..) arg[position 0]=2 arg[self]=y qlclass=NormalMethodCall
 mm = y.my_method
-mm(2) # $ MISSING: call=mm(..) arg[position 0]=2 arg[self]=y qlclass=NormalMethodCall
-Subclass.my_method(y, 2) # $ MISSING: call=Subclass.my_method(..) arg[position 0]=2 arg[self]=y qlclass=MethodAsPlainFunctionCall
+mm(2) # $ call=mm(..) arg[position 0]=2 arg[self]=y qlclass=NormalMethodCall
+Subclass.my_method(y, 2) # $ call=Subclass.my_method(..) arg[position 0]=2 arg[self]=y qlclass=MethodAsPlainFunctionCall
 
-y.staticmethod(3) # $ MISSING: call=y.staticmethod(..) arg[position 0]=3  qlclass=StaticmethodCall
-Subclass.staticmethod(3) # $ MISSING: call=Subclass.staticmethod(..) arg[position 0]=3 qlclass=StaticmethodCall
+y.staticmethod(3) # $ call=y.staticmethod(..) arg[position 0]=3  qlclass=StaticmethodCall
+Subclass.staticmethod(3) # $ call=Subclass.staticmethod(..) arg[position 0]=3 qlclass=StaticmethodCall
 
-y.classmethod(4) # $ MISSING: call=y.classmethod(..) arg[position 0]=4 qlclass=ClassmethodCall
-Subclass.classmethod(4) # $ MISSING: call=Subclass.classmethod(..) arg[position 0]=4 arg[self]=MyClass qlclass=ClassmethodCall
+y.classmethod(4) # $ call=y.classmethod(..) arg[position 0]=4 qlclass=ClassmethodCall
+Subclass.classmethod(4) # $ call=Subclass.classmethod(..) arg[position 0]=4 arg[self]=Subclass qlclass=ClassmethodCall
 
 y[5] # $ MISSING: MISSING: call=y[5] qlclass=SpecialCall arg[self]=y arg[position 0]=5
 

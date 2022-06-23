@@ -331,6 +331,11 @@ Node classInstanceAttrTracker(AttrRead attr) {
   classInstanceAttrTracker(TypeTracker::end(), attr).flowsTo(result)
 }
 
+/** Gets a direct superclass of the argument `cls`, if any. */
+Class getADirectSuperclass(Class cls) {
+  cls.getABase() = classTracker(result).asExpr()
+}
+
 /**
  * A call to a method on a class.
  *
@@ -343,7 +348,12 @@ abstract class MethodCall extends NormalCall {
   AttrRead attr;
 
   MethodCall() {
-    target = cls.getAMethod() and
+    // Note: This is a simple approach, so if we have a A > B > C subclass relationship,
+    // and all classes define a method with `name`, we will model _all_ of them as
+    // targets, although that obviously can't be the case. The idea is to try this
+    // simple approach, which is what JS does currently, and if it is too imprecesise we
+    // can make it smarter.
+    target = getADirectSuperclass*(cls).getAMethod() and
     (
       call.getFunction() = classAttrTracker(attr).asCfgNode() and
       attr.accesses(classTracker(cls), target.getName())

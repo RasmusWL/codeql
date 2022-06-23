@@ -38,12 +38,12 @@ class B(A):
 # However, current test setup uses "callable" for naming, and expects things to be Function.
 b = B(42)
 
-b.some_method() # $ pt=A.some_method
-b.some_staticmethod() # $ pt=A.some_staticmethod
-b.some_classmethod() # $ pt=A.some_classmethod
+b.some_method() # $ pt,tt=A.some_method
+b.some_staticmethod() # $ pt,tt=A.some_staticmethod
+b.some_classmethod() # $ pt,tt=A.some_classmethod
 
-B.some_staticmethod() # $ pt=A.some_staticmethod
-B.some_classmethod() # $ pt=A.some_classmethod
+B.some_staticmethod() # $ pt,tt=A.some_staticmethod
+B.some_classmethod() # $ pt,tt=A.some_classmethod
 
 
 # Subclass with method override
@@ -52,7 +52,7 @@ class C(A):
         print('C.some_method', self)
 
 c = C(42)
-c.some_method() # $ pt,tt=C.some_method
+c.some_method() # $ pt,tt=C.some_method SPURIOUS: tt=A.some_method
 
 
 class D(object):
@@ -63,10 +63,10 @@ class E(C, D):
     pass
 
 e = E(42)
-e.some_method() # $ pt=C.some_method
+e.some_method() # $ pt,tt=C.some_method SPURIOUS: tt=A.some_method tt=D.some_method
 
 class F(D, C):
     pass
 
 f = F(42)
-f.some_method() # $ pt=D.some_method
+f.some_method() # $ pt,tt=D.some_method SPURIOUS: tt=A.some_method tt=C.some_method
