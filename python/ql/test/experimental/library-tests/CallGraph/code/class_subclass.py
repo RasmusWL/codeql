@@ -83,14 +83,14 @@ class Base(object):
         print('Base.bar')
 
     def call_stuff(self):
-        self.foo() # $ pt=Base.foo pt=Sub.foo pt=Mixin.foo
-        self.bar() # $ pt=Base.bar
+        self.foo() # $ pt,tt=Base.foo pt,tt=Sub.foo pt,tt=Mixin.foo
+        self.bar() # $ pt,tt=Base.bar
 
-        self.sm() # $ pt=Base.sm
-        self.cm() # $ pt=Base.cm
+        self.sm() # $ pt,tt=Base.sm
+        self.cm() # $ pt,tt=Base.cm
 
-        self.sm2() # $ pt=Base.sm2 pt=Sub.sm2
-        self.cm2() # $ pt=Base.cm2 pt=Sub.cm2
+        self.sm2() # $ pt,tt=Base.sm2 pt,tt=Sub.sm2
+        self.cm2() # $ pt,tt=Base.cm2 pt,tt=Sub.cm2
 
     @staticmethod
     def sm():
@@ -110,11 +110,11 @@ class Base(object):
 
     @classmethod
     def call_from_cm(cls):
-        cls.sm() # $ pt=Base.sm
-        cls.cm() # $ pt=Base.cm
+        cls.sm() # $ pt,tt=Base.sm
+        cls.cm() # $ pt,tt=Base.cm
 
-        cls.sm2() # $ pt=Base.sm2 pt=Sub.sm2
-        cls.cm2() # $ pt=Base.cm2 pt=Sub.cm2
+        cls.sm2() # $ pt,tt=Base.sm2 pt,tt=Sub.sm2
+        cls.cm2() # $ pt,tt=Base.cm2 pt,tt=Sub.cm2
 
 base = Base()
 print("! base.call_stuff()")
@@ -128,14 +128,14 @@ class Sub(Base):
 
     def foo_on_super(self):
         sup = super()
-        sup.foo() # $ pt=Base.foo
+        sup.foo() # $ pt=Base.foo MISSING: tt=Base.foo
 
     def also_call_stuff(self):
-        self.sm() # $ pt=Base.sm
-        self.cm() # $ pt=Base.cm
+        self.sm() # $ pt,tt=Base.sm
+        self.cm() # $ pt,tt=Base.cm
 
-        self.sm2() # $ pt=Sub.sm2
-        self.cm2() # $ pt=Sub.cm2
+        self.sm2() # $ pt,tt=Sub.sm2
+        self.cm2() # $ pt,tt=Sub.cm2
 
     @staticmethod
     def sm2():

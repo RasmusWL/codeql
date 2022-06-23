@@ -331,8 +331,19 @@ Node classInstanceAttrTracker(AttrRead attr) {
   classInstanceAttrTracker(TypeTracker::end(), attr).flowsTo(result)
 }
 
-/** Gets a direct superclass of the argument `cls`, if any. */
+/**
+ * Gets a direct superclass of the argument `cls`, if any.
+ *
+ * For `A` with the class definition `class A(B, C)` it will have results `B` and `C`.
+ */
 Class getADirectSuperclass(Class cls) { cls.getABase() = classTracker(result).asExpr() }
+
+/**
+ * Gets a direct subclass of the argument `cls`, if any.
+ *
+ *For `B` with the class definition `class A(B)` it will have result `A`.
+ */
+Class getADirectSubclass(Class cls) { cls = getADirectSuperclass(result) }
 
 /**
  * Gets a first function called `name` in subclass search starting in `cls`.
@@ -352,6 +363,55 @@ Function findFunctionStartingInClass(Class cls, string name) {
   result = findFunctionStartingInClass(getADirectSuperclass(cls), name)
 }
 
+private TypeTrackingNode selfTracker(TypeTracker t, Class cls) {
+  t.start() and
+  exists(Function func |
+    func = cls.getAMethod() and
+    not hasStaticmethodDecorator(func) and
+    not hasClassmethodDecorator(func)
+  |
+    result.asExpr() = func.getArg(0)
+  )
+  or
+  exists(TypeTracker t2 | result = selfTracker(t2, cls).track(t2, t))
+}
+
+Node selfTracker(Class cls) { selfTracker(TypeTracker::end(), cls).flowsTo(result) }
+
+private TypeTrackingNode selfAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = selfTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = selfAttrTracker(t2, attr).track(t2, t))
+}
+
+Node selfAttrTracker(AttrRead attr) { selfAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
+
+private TypeTrackingNode clsTracker(TypeTracker t, Class cls) {
+  t.start() and
+  exists(Function func |
+    func = cls.getAMethod() and
+    hasClassmethodDecorator(func)
+  |
+    result.asExpr() = func.getArg(0)
+  )
+  or
+  exists(TypeTracker t2 | result = clsTracker(t2, cls).track(t2, t))
+}
+
+Node clsTracker(Class cls) { clsTracker(TypeTracker::end(), cls).flowsTo(result) }
+
+private TypeTrackingNode clsAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = clsTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = clsAttrTracker(t2, attr).track(t2, t))
+}
+
+Node clsAttrTracker(AttrRead attr) { clsAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
+
 /**
  * A call to a method on a class.
  *
@@ -365,6 +425,7 @@ abstract class MethodCall extends NormalCall {
   AttrRead attr;
 
   MethodCall() {
+    // method calls on reference of class, or direct instance of class
     target = findFunctionStartingInClass(cls, functionName) and
     target.getName() = functionName and
     (
@@ -373,6 +434,17 @@ abstract class MethodCall extends NormalCall {
       or
       call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
       attr.accesses(classInstanceTracker(cls), functionName)
+    )
+    or
+    // method call on self/cls reference from within a method
+    target = findFunctionStartingInClass(getADirectSubclass*(cls), functionName) and
+    target.getName() = functionName and
+    (
+      call.getFunction() = clsAttrTracker(attr).asCfgNode() and
+      attr.accesses(clsTracker(cls), functionName)
+      or
+      call.getFunction() = selfAttrTracker(attr).asCfgNode() and
+      attr.accesses(selfTracker(cls), functionName)
     )
   }
 
@@ -390,7 +462,11 @@ class NormalMethodCall extends MethodCall {
 
   NormalMethodCall() {
     attr.accesses(self, functionName) and
-    self = classInstanceTracker(cls) and
+    (
+      self = classInstanceTracker(cls)
+      or
+      self = selfTracker(cls)
+    ) and
     not hasStaticmethodDecorator(target) and
     not hasClassmethodDecorator(target)
   }
@@ -452,7 +528,11 @@ class ClassmethodCall extends MethodCall {
     // only set `self` argument when it's a class, and not when it's a class instance.
     apos.isSelf() and
     result = self and
-    self = classTracker(cls)
+    (
+      self = classTracker(cls)
+      or
+      self = clsTracker(cls)
+    )
   }
 }
 
