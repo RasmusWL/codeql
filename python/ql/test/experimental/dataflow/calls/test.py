@@ -26,20 +26,20 @@ class MyClass(object):
         pass
 
 
-func(0) # $ call=func(..) qlclass=FunctionCall arg[position 0]=0
+func(0) # $ call=func(..) arg[position 0]=0 qlclass=PlainFunctionCall
 
 x = MyClass(1)
 
-x.my_method(2) # $ call=x.my_method(..) qlclass=InstanceMethodCall arg[position 0]=2 arg[self]=x
+x.my_method(2) # $ call=x.my_method(..) arg[position 0]=2 arg[self]=x qlclass=NormalMethodCall
 mm = x.my_method
-mm(2) # $ call=mm(..) qlclass=InstanceMethodCall arg[position 0]=2 arg[self]=x
-MyClass.my_method(x, 2) # $ call=MyClass.my_method(..) qlclass=MethodAsPlainFunctionCall arg[position 0]=2 arg[self]=x
+mm(2) # $ call=mm(..) arg[position 0]=2 arg[self]=x qlclass=NormalMethodCall
+MyClass.my_method(x, 2) # $ call=MyClass.my_method(..) arg[position 0]=2 arg[self]=x qlclass=MethodAsPlainFunctionCall
 
-x.staticmethod(3) # $ arg[position 0]=3 call=x.staticmethod(..) qlclass=InstanceMethodCall arg[self]=x
-MyClass.staticmethod(3) # $ arg[position 0]=3 call=MyClass.staticmethod(..) qlclass=FunctionCall
+x.staticmethod(3) # $ call=x.staticmethod(..) arg[position 0]=3  qlclass=StaticmethodCall
+MyClass.staticmethod(3) # $ call=MyClass.staticmethod(..) arg[position 0]=3 qlclass=StaticmethodCall
 
-x.classmethod(4) # $ arg[position 0]=4 call=x.classmethod(..) qlclass=InstanceMethodCall
-MyClass.classmethod(4) # $ arg[position 0]=4 call=MyClass.classmethod(..) arg[self]=MyClass qlclass=ClassmethodCall
+x.classmethod(4) # $ call=x.classmethod(..) arg[position 0]=4 qlclass=ClassmethodCall
+MyClass.classmethod(4) # $ call=MyClass.classmethod(..) arg[position 0]=4 arg[self]=MyClass qlclass=ClassmethodCall
 
 x[5] # $ MISSING: call=x[5] qlclass=SpecialCall arg[self]=x arg[position 0]=5
 

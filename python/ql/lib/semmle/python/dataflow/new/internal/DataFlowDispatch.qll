@@ -278,58 +278,15 @@ abstract class NormalCall extends DataFlowCall, TNormalCall {
  * A call to a plain function, not including methods in general, but including
  * staticmethods accessed on a class reference (`MyClass.my_staticmethod()`).
  */
-class FunctionCall extends NormalCall {
+class PlainFunctionCall extends NormalCall {
   Function target;
 
-  FunctionCall() {
+  PlainFunctionCall() {
     call.getFunction() = functionTracker(target).asCfgNode() and
-    (
-      not exists(Class cls | cls.getAMethod() = target)
-      or
-      hasStaticmethodDecorator(target)
-    )
+    not exists(Class cls | cls.getAMethod() = target)
   }
 
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-}
-
-/**
- * A call to method on a class, not going through an instance method, such as
- *
- * ```py
- * class Foo:
- *     def method(self, arg):
- *         pass
- *
- * foo = Foo()
- * Foo.method(foo, 42)
- * ```
- */
-class MethodAsPlainFunctionCall extends NormalCall {
-  Function target;
-
-  MethodAsPlainFunctionCall() {
-    call.getFunction() = functionTracker(target).asCfgNode() and
-    exists(Class cls | cls.getAMethod() = target) and
-    not hasStaticmethodDecorator(target) and
-    not hasClassmethodDecorator(target)
-  }
-
-  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) {
-    apos.isSelf() and result.asCfgNode() = call.getArg(0)
-    or
-    exists(int index |
-      apos.isPositional(index) and
-      result.asCfgNode() = call.getArg(index + 1)
-    )
-    or
-    exists(string name |
-      apos.isKeyword(name) and
-      result.asCfgNode() = call.getArgByName(name)
-    )
-  }
 }
 
 private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
@@ -375,75 +332,111 @@ Node classInstanceAttrTracker(AttrRead attr) {
 }
 
 /**
- * A call to an instance method.
+ * A call to a method on a class.
  *
- * See 'instance methods' in https://docs.python.org/3/reference/datamodel.html
+ * These are separated further to handle different argument passing, but share a core
+ * logic of attribute lookup going through inheritance.
  */
-class InstanceMethodCall extends NormalCall {
-  string attrName;
+abstract class MethodCall extends NormalCall {
+  Function target;
   Class cls;
-  Node self;
+  AttrRead attr;
 
-  InstanceMethodCall() {
-    exists(AttrRead attr |
+  MethodCall() {
+    target = cls.getAMethod() and
+    (
+      call.getFunction() = classAttrTracker(attr).asCfgNode() and
+      attr.accesses(classTracker(cls), target.getName())
+      or
       call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
-      attr.accesses(self, attrName) and
-      self = classInstanceTracker(cls)
+      attr.accesses(classInstanceTracker(cls), target.getName())
     )
   }
 
-  Function getTargetFunction() {
-    cls.getAMethod() = result and
-    result.getName() = attrName
-    // TODO: The fact that this QL class handles `x.staticmethod(3)` is also a bit strange :sus:
-    // since staticmethods are not actually instance methods :|
-  }
-
-  override DataFlowCallable getCallable() {
-    result.(DataFlowFunction).getScope() = this.getTargetFunction()
-  }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) {
-    result = super.getArgument(apos)
-    or
-    apos.isSelf() and
-    result = self and
-    // We should not hass `self` when `self` is a class instance, and target a classmethod
-    // (Python will get the class of the class instance, which will be used as the "self"/cls
-    // argument)
-    not hasClassmethodDecorator(this.getTargetFunction())
-  }
+  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
 }
 
-/** A call to a classmethod, obtained from a class */
-class ClassmethodCall extends NormalCall {
-  string attrName;
-  Class cls;
+/**
+ * A call to an "normal" method on a class instance.
+ * Does not include staticmethods or classmethods.
+ *
+ * See 'instance methods' in https://docs.python.org/3/reference/datamodel.html
+ */
+class NormalMethodCall extends MethodCall {
   Node self;
-  Function target;
 
-  ClassmethodCall() {
-    exists(AttrRead attr |
-      call.getFunction() = classAttrTracker(attr).asCfgNode() and
-      attr.accesses(self, attrName) and
-      self = classTracker(cls)
-    ) and
-    // TODO: this bit of code should be shared between ClassmethodCall and InstanceMethodCall
-    // Should also consider whether InstanceMethodCall is really the right name, since classmethods are
-    // part of instance methods :|
-    cls.getAMethod() = target and
-    target.getName() = attrName and
+  NormalMethodCall() {
+    attr.accesses(self, target.getName()) and
+    self = classInstanceTracker(cls) and
     not hasStaticmethodDecorator(target) and
-    hasClassmethodDecorator(target)
+    not hasClassmethodDecorator(target)
   }
-
-  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
 
   override ArgumentNode getArgument(ArgumentPosition apos) {
     result = super.getArgument(apos)
     or
     apos.isSelf() and
     result = self
+  }
+}
+
+/**
+ * A call to method on a class, not going through an instance method, such as
+ *
+ * ```py
+ * class Foo:
+ *     def method(self, arg):
+ *         pass
+ *
+ * foo = Foo()
+ * Foo.method(foo, 42)
+ * ```
+ */
+class MethodAsPlainFunctionCall extends MethodCall {
+  MethodAsPlainFunctionCall() {
+    attr.getObject() = classTracker(cls) and
+    not hasStaticmethodDecorator(target) and
+    not hasClassmethodDecorator(target)
+  }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    apos.isSelf() and result.asCfgNode() = call.getArg(0)
+    or
+    exists(int index |
+      apos.isPositional(index) and
+      result.asCfgNode() = call.getArg(index + 1)
+    )
+    or
+    exists(string name |
+      apos.isKeyword(name) and
+      result.asCfgNode() = call.getArgByName(name)
+    )
+  }
+}
+
+/** A call to a classmethod. */
+class ClassmethodCall extends MethodCall {
+  Node self;
+
+  ClassmethodCall() {
+    attr.accesses(self, target.getName()) and
+    hasClassmethodDecorator(target)
+  }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    result = super.getArgument(apos)
+    or
+    // only set `self` argument when it's a class, and not when it's a class instance.
+    apos.isSelf() and
+    result = self and
+    self = classTracker(cls)
+  }
+}
+
+/** A call to a staticmethod. */
+class StaticmethodCall extends MethodCall {
+  StaticmethodCall() {
+    hasStaticmethodDecorator(target)
   }
 }
 
