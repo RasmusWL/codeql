@@ -25,16 +25,16 @@ class A(object):
 a = A(42)
 
 # calls:A.some_method
-a.some_method()
+a.some_method() # $ pt,tt=A.some_method
 # calls:A.some_staticmethod
-a.some_staticmethod()
+a.some_staticmethod() # $ pt,tt=A.some_staticmethod
 # calls:A.some_classmethod
-a.some_classmethod()
+a.some_classmethod() # $ pt,tt=A.some_classmethod
 
 # calls:A.some_staticmethod
-A.some_staticmethod()
+A.some_staticmethod() # $ pt,tt=A.some_staticmethod
 # calls:A.some_classmethod
-A.some_classmethod()
+A.some_classmethod() # $ pt,tt=A.some_classmethod
 
 
 # Subclass test
@@ -47,16 +47,16 @@ class B(A):
 b = B(42)
 
 # calls:A.some_method
-b.some_method()
+b.some_method() # $ pt=A.some_method
 # calls:A.some_staticmethod
-b.some_staticmethod()
+b.some_staticmethod() # $ pt=A.some_staticmethod
 # calls:A.some_classmethod
-b.some_classmethod()
+b.some_classmethod() # $ pt=A.some_classmethod
 
 # calls:A.some_staticmethod
-B.some_staticmethod()
+B.some_staticmethod() # $ pt=A.some_staticmethod
 # calls:A.some_classmethod
-B.some_classmethod()
+B.some_classmethod() # $ pt=A.some_classmethod
 
 
 # Subclass with method override
@@ -67,7 +67,7 @@ class C(A):
 
 c = C(42)
 # calls:C.some_method
-c.some_method()
+c.some_method() # $ pt,tt=C.some_method
 
 
 class D(object):
@@ -80,11 +80,11 @@ class E(C, D):
 
 e = E(42)
 # calls:C.some_method
-e.some_method()
+e.some_method() # $ pt=C.some_method
 
 class F(D, C):
     pass
 
 f = F(42)
 # calls:D.some_method
-f.some_method()
+f.some_method() # $ pt=D.some_method
