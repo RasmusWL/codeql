@@ -17,7 +17,7 @@ class B(object):
 b = B(1)
 
 print(str(b))
-# this calls `str(b4)` inside
+# this calls `str(b)` inside
 print(b)
 
 

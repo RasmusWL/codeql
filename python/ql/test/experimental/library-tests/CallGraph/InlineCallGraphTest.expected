@@ -3,3 +3,13 @@ debug_callableNotUnique
 | code/class_properties.py:7:5:7:18 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
 | code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
 | code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
+pointsTo_found_typeTracker_notFound
+| code/class_subclass.py:41:1:41:15 | ControlFlowNode for Attribute() | A.some_method |
+| code/class_subclass.py:42:1:42:21 | ControlFlowNode for Attribute() | A.some_staticmethod |
+| code/class_subclass.py:43:1:43:20 | ControlFlowNode for Attribute() | A.some_classmethod |
+| code/class_subclass.py:45:1:45:21 | ControlFlowNode for Attribute() | A.some_staticmethod |
+| code/class_subclass.py:46:1:46:20 | ControlFlowNode for Attribute() | A.some_classmethod |
+| code/class_subclass.py:66:1:66:15 | ControlFlowNode for Attribute() | C.some_method |
+| code/class_subclass.py:72:1:72:15 | ControlFlowNode for Attribute() | D.some_method |
+pointsTo_notFound_typeTracker_found
+| code/underscore_prefix_func_name.py:14:5:14:19 | ControlFlowNode for some_function() | some_function |
