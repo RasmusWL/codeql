@@ -15,6 +15,14 @@ predicate typeTrackerCallEdge(CallNode call, Function callable) {
   TT::TFunction(callable) = TT::viableCallable(TT::TNormalCall(call))
 }
 
+/** Holds if the call edge is from a class call. */
+predicate typeTrackerClassCall(CallNode call, Function callable) {
+  exists(TT::ClassCall cc |
+    cc.getNode() = call and
+    TT::TFunction(callable) = cc.getCallable()
+  )
+}
+
 class CallGraphTest extends InlineExpectationsTest {
   CallGraphTest() { this = "CallGraphTest" }
 
@@ -66,6 +74,10 @@ query predicate pointsTo_notFound_typeTracker_found(CallNode call, string qualna
   exists(Function target |
     not pointsToCallEdge(call, target) and
     typeTrackerCallEdge(call, target) and
-    qualname = betterQualName(target)
+    qualname = betterQualName(target) and
+    // We filter out result differences for points-to and type-tracking for class calls,
+    // since otherwise it gives too much noise (these are just handled differently
+    // between the two).
+    not typeTrackerClassCall(call, target)
   )
 }

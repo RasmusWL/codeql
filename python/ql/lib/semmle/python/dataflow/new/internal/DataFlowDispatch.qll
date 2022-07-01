@@ -541,6 +541,35 @@ class StaticmethodCall extends MethodCall {
   StaticmethodCall() { hasStaticmethodDecorator(target) }
 }
 
+Function invokedFunctionFromClassConstruction(Class cls) {
+  result = findFunctionStartingInClass(cls, "__new__")
+  or
+  // as described in https://docs.python.org/3/reference/datamodel.html#object.__new__
+  // __init__ will only be called when __new__ returns an instance of the class (which
+  // is not a requirement). However, for simplicity, we assume that __init__ will always
+  // be called.
+  result = findFunctionStartingInClass(cls, "__init__")
+}
+
+/** A call to a class. */
+class ClassCall extends NormalCall {
+  Class cls;
+
+  ClassCall() { call.getFunction() = classTracker(cls).asCfgNode() }
+
+  override DataFlowCallable getCallable() {
+    result.(DataFlowFunction).getScope() = invokedFunctionFromClassConstruction(cls)
+  }
+
+  Class getClass() { result = cls }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    // TODO: pass self, so writes in __init__ is captured by post-update node
+    // apos.isSelf() and result.asCfgNode() = call.getArg(0)
+    result = super.getArgument(apos)
+  }
+}
+
 /** Gets a viable run-time target for the call `call`. */
 DataFlowCallable viableCallable(DataFlowCall call) { result = call.getCallable() }
 

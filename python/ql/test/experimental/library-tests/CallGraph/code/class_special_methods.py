@@ -11,10 +11,10 @@ class B(object):
     def __add__(self, other):
         print('B.__add__')
         if isinstance(other, B):
-            return B(self.arg + other.arg)
-        return B(self.arg + other)
+            return B(self.arg + other.arg) # $ tt=B.__init__
+        return B(self.arg + other) # $ tt=B.__init__
 
-b = B(1)
+b = B(1) # $ tt=B.__init__
 
 print(str(b))
 # this calls `str(b)` inside
@@ -22,7 +22,7 @@ print(b)
 
 
 
-b2 = B(2)
+b2 = B(2) # $ tt=B.__init__
 
 # __add__ is called
 b + b2

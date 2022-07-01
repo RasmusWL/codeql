@@ -19,7 +19,7 @@ class A(object):
 # TODO: Figure out how to annotate class instantiation (and add one here).
 # Current points-to says it's a call to the class (instead of __init__/__new__/metaclass-something).
 # However, current test setup uses "callable" for naming, and expects things to be Function.
-a = A(42)
+a = A(42) # $ tt=A.__init__
 
 a.some_method() # $ pt,tt=A.some_method
 a.some_staticmethod() # $ pt,tt=A.some_staticmethod
@@ -36,7 +36,7 @@ class B(A):
 # TODO: Figure out how to annotate class instantiation (and add one here).
 # Current points-to says it's a call to the class (instead of __init__/__new__/metaclass-something).
 # However, current test setup uses "callable" for naming, and expects things to be Function.
-b = B(42)
+b = B(42) # $ tt=A.__init__
 
 b.some_method() # $ pt,tt=A.some_method
 b.some_staticmethod() # $ pt,tt=A.some_staticmethod
@@ -51,7 +51,7 @@ class C(A):
     def some_method(self):
         print('C.some_method', self)
 
-c = C(42)
+c = C(42) # $ tt=A.__init__
 c.some_method() # $ pt,tt=C.some_method
 
 
@@ -62,13 +62,13 @@ class D(object):
 class E(C, D):
     pass
 
-e = E(42)
+e = E(42) # $ tt=A.__init__
 e.some_method() # $ pt,tt=C.some_method SPURIOUS: tt=D.some_method
 
 class F(D, C):
     pass
 
-f = F(42)
+f = F(42) # $ tt=A.__init__
 f.some_method() # $ pt,tt=D.some_method SPURIOUS: tt=C.some_method
 
 # ------------------------------------------------------------------------------

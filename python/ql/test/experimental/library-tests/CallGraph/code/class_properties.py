@@ -32,7 +32,7 @@ class Prop(object):
 
     arg2 = property(_arg2_getter, _arg2_setter, _arg2_deleter)
 
-prop = Prop(42)
+prop = Prop(42) # $ tt=Prop.__init__
 
 prop.arg
 prop.arg = 43

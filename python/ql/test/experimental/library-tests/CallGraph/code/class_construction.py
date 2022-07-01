@@ -2,7 +2,7 @@ class X(object):
     def __init__(self, arg):
         print("X.__init__", arg)
 
-X(42) # $ MISSING: tt=X.__init__
+X(42) # $ tt=X.__init__
 print()
 
 
@@ -11,7 +11,7 @@ class Y(X):
         print("Y.__init__", arg)
         super().__init__(-arg) # $ pt=X.__init__ MISSING: tt=X.__init__
 
-Y(43) # $ MISSING: tt=Y.__init__
+Y(43) # $ tt=Y.__init__
 print()
 
 # ---
@@ -30,7 +30,7 @@ class WithNew(object):
     def some_method(self):
         print("WithNew.__init__")
 
-WithNew(44) # $ MISSING: tt=WithNew.__new__ tt=WithNew.__init__
+WithNew(44) # $ tt=WithNew.__new__ tt=WithNew.__init__
 print()
 
 
@@ -46,7 +46,7 @@ class ExtraCallToInit(object):
     def __init__(self, arg):
         print("ExtraCallToInit.__init__", arg, self)
 
-ExtraCallToInit(1000) # $ MISSING: tt=ExtraCallToInit.__new__ tt=ExtraCallToInit.__init__
+ExtraCallToInit(1000) # $ tt=ExtraCallToInit.__new__ tt=ExtraCallToInit.__init__
 print()
 
 
@@ -62,5 +62,5 @@ class InitNotCalled(object):
     def __init__(self, arg):
         print("InitNotCalled.__init__", arg)
 
-InitNotCalled(2000) # $ MISSING: tt=InitNotCalled.__new__
+InitNotCalled(2000) # $ tt=InitNotCalled.__new__ SPURIOUS: tt=InitNotCalled.__init__
 print()
