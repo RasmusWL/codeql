@@ -232,5 +232,16 @@ class Customized:
 customized = Customized()
 SINK(Customized.a)  #$ MISSING:flow="SOURCE, l:-8 -> customized.a"
 SINK_F(Customized.b)
-SINK(customized.a)  #$ MISSING:flow="SOURCE, l:-10 -> customized.a"
-SINK(customized.b)  #$ MISSING: flow="SOURCE, l:-7 -> customized.b"
+SINK(customized.a)  #$ flow="SOURCE, l:-10 -> customized.a"
+SINK(customized.b)  #$ flow="SOURCE, l:-7 -> customized.b"
+
+
+class Test2:
+
+  def __init__(self, arg):
+    self.x = SOURCE
+    self.y = arg
+
+t = Test2(SOURCE)
+SINK(t.x) # $ flow="SOURCE, l:-4 -> t.x"
+SINK(t.y) # $ flow="SOURCE, l:-2 -> t.y"

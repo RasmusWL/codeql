@@ -261,10 +261,10 @@ def test_potential_crosstalk_different_name(cond=True):
 
     func(SOURCE)
 
-    SINK(objx.x) # $ MISSING: flow="SOURCE, l:-2 -> objx.x"
-    SINK_F(objx.y)
-    SINK_F(objy.x)
-    SINK_F(objy.y) # $ MISSING: flow="SOURCE, l:-5 -> objy.y"
+    SINK(objx.x) # $ flow="SOURCE, l:-2 -> objx.x"
+    SINK_F(objx.y) # $ SPURIOUS: flow="SOURCE, l:-3 -> objx.y"
+    SINK_F(objy.x) # $ SPURIOUS: flow="SOURCE, l:-4 -> objy.x"
+    SINK_F(objy.y) # $ flow="SOURCE, l:-5 -> objy.y"
 
 
 @expects(8) # $ unresolved_call=expects(..) unresolved_call=expects(..)(..)
@@ -284,10 +284,10 @@ def test_potential_crosstalk_same_name(cond=True):
 
     func(SOURCE)
 
-    SINK(objx.x) # $ MISSING: flow="SOURCE, l:-2 -> objx.x"
-    SINK_F(objx.y)
-    SINK_F(objy.x)
-    SINK_F(objy.y) # $ MISSING: flow="SOURCE, l:-5 -> objy.y"
+    SINK(objx.x) # $ flow="SOURCE, l:-2 -> objx.x"
+    SINK_F(objx.y) # $ SPURIOUS: flow="SOURCE, l:-3 -> objx.y"
+    SINK_F(objy.x) # $ SPURIOUS: flow="SOURCE, l:-4 -> objy.x"
+    SINK_F(objy.y) # $ flow="SOURCE, l:-5 -> objy.y"
 
 
 @expects(10) # $ unresolved_call=expects(..) unresolved_call=expects(..)(..)
@@ -366,7 +366,7 @@ SINK(obj2.foo) # $ flow="SOURCE, l:-1 -> obj2.foo"
 
 # apparently these if statements below makes a difference :O
 # but one is not enough
-cond = os.urandom(1)[0] > 128
+cond = os.urandom(1)[0] > 128 # $ unresolved_call=os.urandom(..)
 
 if cond:
     pass

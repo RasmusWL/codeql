@@ -30,10 +30,32 @@ newtype TNode =
     or
     node.getNode() instanceof Pattern
   } or
-  /** A synthetic node representing the value of an object before a state change */
-  TSyntheticPreUpdateNode(NeedsSyntheticPreUpdateNode post) or
-  /** A synthetic node representing the value of an object after a state change. */
-  TSyntheticPostUpdateNode(NeedsSyntheticPostUpdateNode pre) or
+  /**
+   * A synthetic node representing the value of an object before a state change.
+   *
+   * For class calls we pass a synthetic self argument, so attribute writes in
+   * `__init__` is reflected on the resulting object (we need special logic for this
+   * since there is no `return` in `__init__`)
+   */
+  // NOTE: since we can't rely on the call graph, but we want to have synthetic
+  // pre-update nodes for class calls, we end up getting synthetic pre-update nodes for
+  // ALL calls :|
+  TSyntheticPreUpdateNode(CallNode call) or
+  /**
+   * A synthetic node representing the value of an object after a state change.
+   * See QLDoc for `PostUpdateNode`.
+   */
+  TSyntheticPostUpdateNode(ControlFlowNode node) {
+    exists(CallNode call |
+      node = call.getArg(_)
+      or
+      node = call.getArgByName(_)
+    )
+    or
+    node = any(AttrNode a).getObject()
+    or
+    node = any(SubscriptNode s).getObject()
+  } or
   /** A node representing a global (module-level) variable in a specific module. */
   TModuleVariableNode(Module m, GlobalVariable v) {
     v.getScope() = m and
@@ -279,6 +301,9 @@ class ArgumentNode extends Node {
       this.(CfgNode).getNode() = call.getArg(_)
       or
       this.(CfgNode).getNode() = call.getArgByName(_)
+      or
+      // for self in class constructor calls
+      this = TSyntheticPreUpdateNode(call)
     )
     or
     // `self` for instance method calls
@@ -304,16 +329,17 @@ class ArgumentNode extends Node {
  * changed its state.
  *
  * This can be either the argument to a callable after the callable returns
- * (which might have mutated the argument), or the qualifier of a field after
- * an update to the field.
+ * (which might have mutated the argument), the qualifier of a field after
+ * an update to the field, or a container such as a list/dictionary after an element
+ * update.
  *
  * Nodes corresponding to AST elements, for example `ExprNode`s, usually refer
- * to the value before the update with the exception of `ObjectCreationNode`s,
+ * to the value before the update with the exception of class calls,
  * which represents the value _after_ the constructor has run.
  */
-abstract class PostUpdateNode extends Node {
+class PostUpdateNode extends Node instanceof PostUpdateNodeImpl {
   /** Gets the node before the state update. */
-  abstract Node getPreUpdateNode();
+  Node getPreUpdateNode() { result = super.getPreUpdateNode() }
 }
 
 /**

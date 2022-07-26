@@ -564,8 +564,9 @@ class ClassCall extends NormalCall {
   Class getClass() { result = cls }
 
   override ArgumentNode getArgument(ArgumentPosition apos) {
-    // TODO: pass self, so writes in __init__ is captured by post-update node
-    // apos.isSelf() and result.asCfgNode() = call.getArg(0)
+    apos.isSelf() and
+    result = TSyntheticPreUpdateNode(call)
+    or
     result = super.getArgument(apos)
   }
 }
