@@ -6,7 +6,15 @@ debug_callableNotUnique
 pointsTo_found_typeTracker_notFound
 | code/class_construction.py:12:9:12:30 | ControlFlowNode for Attribute() | X.__init__ |
 | code/class_subclass.py:131:9:131:17 | ControlFlowNode for Attribute() | Base.foo |
+| code/class_super.py:23:9:23:21 | ControlFlowNode for Attribute() | A.foo |
+| code/class_super.py:24:9:24:28 | ControlFlowNode for Attribute() | A.foo |
+| code/class_super.py:50:1:50:6 | ControlFlowNode for Attribute() | outside_def |
+| code/class_super.py:60:1:60:17 | ControlFlowNode for Attribute() | A.foo |
 pointsTo_notFound_typeTracker_found
 | code/class_subclass.py:66:1:66:15 | ControlFlowNode for Attribute() | D.some_method |
 | code/class_subclass.py:72:1:72:15 | ControlFlowNode for Attribute() | C.some_method |
+| code/class_super.py:81:1:81:12 | ControlFlowNode for Attribute() | C.foo_on_A |
+| code/class_super.py:101:1:101:7 | ControlFlowNode for Attribute() | Z.foo |
+| code/class_super.py:108:1:108:8 | ControlFlowNode for Attribute() | Y.foo |
+| code/class_super.py:108:1:108:8 | ControlFlowNode for Attribute() | Z.foo |
 | code/underscore_prefix_func_name.py:14:5:14:19 | ControlFlowNode for some_function() | some_function |
