@@ -413,6 +413,60 @@ private TypeTrackingNode clsAttrTracker(TypeTracker t, AttrRead attr) {
 Node clsAttrTracker(AttrRead attr) { clsAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
 
 /**
+ * Holds if `call` is a call to a method `target` on an instance or class, where the
+ * instance or class is not derived from an implicit `self`/`cls` argument to a method
+ * -- for that, see `callWithinMethodImplicitSelfOrCls`.
+ *
+ * It is found by making an attribute read `attr` with the name `functionName` on a
+ * reference to the class `cls`, or to an instance of the class `cls`. The reference the
+ * attribute-read is made on is `self`.
+ */
+pragma[inline]
+private predicate directCall(
+  CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
+) {
+  // method calls on reference of class, or direct instance of class
+  target = findFunctionStartingInClass(cls, functionName) and
+  target.getName() = functionName and
+  (
+    call.getFunction() = classAttrTracker(attr).asCfgNode() and
+    attr.accesses(classTracker(cls), functionName)
+    or
+    call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
+    attr.accesses(classInstanceTracker(cls), functionName)
+  ) and
+  // TODO: Maybe it's good enough to do self = attr.getObject??
+  attr.accesses(self, functionName)
+}
+
+/**
+ * Holds if `call` is a call to a method `target` derived from an implicit `self`/`cls`
+ * argument to a method within the class `methodWithinClass`.
+ *
+ * It is found by making an attribute read `attr` with the name `functionName` on a
+ * reference to an implicit `self`/`cls` argument. The reference the attribute-read is
+ * made on is `self`.
+ */
+pragma[inline]
+private predicate callWithinMethodImplicitSelfOrCls(
+  CallNode call, Function target, string functionName, Class methodWithinClass, AttrRead attr,
+  Node self
+) {
+  // method call on self/cls reference from within a method
+  target = findFunctionStartingInClass(getADirectSubclass*(methodWithinClass), functionName) and
+  target.getName() = functionName and
+  (
+    call.getFunction() = clsAttrTracker(attr).asCfgNode() and
+    attr.accesses(clsTracker(methodWithinClass), functionName)
+    or
+    call.getFunction() = selfAttrTracker(attr).asCfgNode() and
+    attr.accesses(selfTracker(methodWithinClass), functionName)
+  ) and
+  // TODO: Maybe it's good enough to do self = attr.getObject??
+  attr.accesses(self, functionName)
+}
+
+/**
  * A call to a method on a class.
  *
  * These are separated further to handle different argument passing, but share a core
@@ -420,32 +474,12 @@ Node clsAttrTracker(AttrRead attr) { clsAttrTracker(TypeTracker::end(), attr).fl
  */
 abstract class MethodCall extends NormalCall {
   Function target;
-  string functionName;
-  Class cls;
-  AttrRead attr;
+  Node self;
 
   MethodCall() {
-    // method calls on reference of class, or direct instance of class
-    target = findFunctionStartingInClass(cls, functionName) and
-    target.getName() = functionName and
-    (
-      call.getFunction() = classAttrTracker(attr).asCfgNode() and
-      attr.accesses(classTracker(cls), functionName)
-      or
-      call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
-      attr.accesses(classInstanceTracker(cls), functionName)
-    )
+    directCall(call, target, _, _, _, self)
     or
-    // method call on self/cls reference from within a method
-    target = findFunctionStartingInClass(getADirectSubclass*(cls), functionName) and
-    target.getName() = functionName and
-    (
-      call.getFunction() = clsAttrTracker(attr).asCfgNode() and
-      attr.accesses(clsTracker(cls), functionName)
-      or
-      call.getFunction() = selfAttrTracker(attr).asCfgNode() and
-      attr.accesses(selfTracker(cls), functionName)
-    )
+    callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
   }
 
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
@@ -458,14 +492,11 @@ abstract class MethodCall extends NormalCall {
  * See 'instance methods' in https://docs.python.org/3/reference/datamodel.html
  */
 class NormalMethodCall extends MethodCall {
-  Node self;
-
   NormalMethodCall() {
-    attr.accesses(self, functionName) and
     (
-      self = classInstanceTracker(cls)
+      self = classInstanceTracker(_)
       or
-      self = selfTracker(cls)
+      self = selfTracker(_)
     ) and
     not hasStaticmethodDecorator(target) and
     not hasClassmethodDecorator(target)
@@ -493,7 +524,7 @@ class NormalMethodCall extends MethodCall {
  */
 class MethodAsPlainFunctionCall extends MethodCall {
   MethodAsPlainFunctionCall() {
-    attr.accesses(classTracker(cls), functionName) and
+    self = classTracker(_) and
     not hasStaticmethodDecorator(target) and
     not hasClassmethodDecorator(target)
   }
@@ -515,12 +546,7 @@ class MethodAsPlainFunctionCall extends MethodCall {
 
 /** A call to a classmethod. */
 class ClassmethodCall extends MethodCall {
-  Node self;
-
-  ClassmethodCall() {
-    attr.accesses(self, functionName) and
-    hasClassmethodDecorator(target)
-  }
+  ClassmethodCall() { hasClassmethodDecorator(target) }
 
   override ArgumentNode getArgument(ArgumentPosition apos) {
     result = super.getArgument(apos)
@@ -529,9 +555,9 @@ class ClassmethodCall extends MethodCall {
     apos.isSelf() and
     result = self and
     (
-      self = classTracker(cls)
+      self = classTracker(_)
       or
-      self = clsTracker(cls)
+      self = clsTracker(_)
     )
   }
 }
