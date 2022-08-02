@@ -105,4 +105,4 @@ class ZY(Z, Y):
 
 print("! zy.foo()")
 zy = ZY()
-zy.foo() # $ tt=Z.foo SPURIOUS: tt=Y.foo
+zy.foo() # $ tt=Z.foo

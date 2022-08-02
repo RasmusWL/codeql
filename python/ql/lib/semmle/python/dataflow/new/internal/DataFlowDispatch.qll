@@ -563,6 +563,28 @@ Function findFunctionAccordingToMro(Class cls, string name) {
   result = findFunctionAccordingToMro(getNextClassInMro(cls), name)
 }
 
+Class getNextClassInMroKnownStartingClass(Class cls, Class startingClass) {
+  cls.getBase(0) = classTracker(result).asExpr() and
+  cls = getADirectSuperclass*(startingClass)
+  or
+  exists(Class sub, int i | sub = getADirectSuperclass*(startingClass) |
+    sub.getBase(i) = classTracker(cls).asExpr() and
+    sub.getBase(i + 1) = classTracker(result).asExpr() and
+    not result = cls
+  )
+}
+
+Function findFunctionAccordingToMroKnownStartingClass(Class cls, Class startingClass, string name) {
+  result = cls.getAMethod() and
+  result.getName() = name and
+  cls = getADirectSuperclass*(startingClass)
+  or
+  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
+  result =
+    findFunctionAccordingToMroKnownStartingClass(getNextClassInMroKnownStartingClass(cls,
+        startingClass), startingClass, name)
+}
+
 /**
  * Holds if `call` is a call to a method `target` on an instance or class, where the
  * instance or class is not derived from an implicit `self`/`cls` argument to a method
@@ -577,7 +599,7 @@ private predicate directCall(
   CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
 ) {
   // method calls on reference of class, or direct instance of class
-  target = findFunctionStartingInClass(cls, functionName) and
+  target = findFunctionAccordingToMroKnownStartingClass(cls, cls, functionName) and
   target.getName() = functionName and
   (
     call.getFunction() = classAttrTracker(attr).asCfgNode() and

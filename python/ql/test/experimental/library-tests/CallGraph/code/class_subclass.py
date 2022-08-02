@@ -63,13 +63,13 @@ class E(C, D):
     pass
 
 e = E(42) # $ tt=A.__init__
-e.some_method() # $ pt,tt=C.some_method SPURIOUS: tt=D.some_method
+e.some_method() # $ pt,tt=C.some_method
 
 class F(D, C):
     pass
 
 f = F(42) # $ tt=A.__init__
-f.some_method() # $ pt,tt=D.some_method SPURIOUS: tt=C.some_method
+f.some_method() # $ pt,tt=D.some_method
 
 # ------------------------------------------------------------------------------
 # self/cls in methods
