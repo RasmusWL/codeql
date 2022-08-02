@@ -16,9 +16,6 @@ class A(object):
         print('A.some_classmethod', cls)
 
 
-# TODO: Figure out how to annotate class instantiation (and add one here).
-# Current points-to says it's a call to the class (instead of __init__/__new__/metaclass-something).
-# However, current test setup uses "callable" for naming, and expects things to be Function.
 a = A(42) # $ tt=A.__init__
 
 a.some_method() # $ pt,tt=A.some_method
@@ -33,9 +30,6 @@ A.some_classmethod() # $ pt,tt=A.some_classmethod
 class B(A):
     pass
 
-# TODO: Figure out how to annotate class instantiation (and add one here).
-# Current points-to says it's a call to the class (instead of __init__/__new__/metaclass-something).
-# However, current test setup uses "callable" for naming, and expects things to be Function.
 b = B(42) # $ tt=A.__init__
 
 b.some_method() # $ pt,tt=A.some_method
