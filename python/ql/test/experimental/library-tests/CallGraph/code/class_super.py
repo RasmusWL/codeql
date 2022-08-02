@@ -94,7 +94,7 @@ class Y(X):
 class Z(X):
     def foo(self):
         print('Z.foo')
-        super().foo() # $ tt=X.foo MISSING: tt=Y.foo
+        super().foo() # $ tt=X.foo tt=Y.foo
 
 print("! z.foo()")
 z = Z()

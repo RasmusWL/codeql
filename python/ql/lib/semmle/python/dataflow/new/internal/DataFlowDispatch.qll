@@ -497,6 +497,73 @@ Node superCallAttrTracker(AttrRead attr) {
 }
 
 /**
+ * Gets a class that, from an approximated MRO calculation, might be the next class used
+ * for member-lookup when `super().attr` is used inside the class `cls`.
+ *
+ * In the example below, with `cls=B`, this predicate will have `A` and `C` as results.
+ * ```py
+ * class A: pass
+ * class B(A): pass
+ * class C(A): pass
+ * class D(B, C): pass
+ * ```
+ *
+ * NOTE: This approximation does not handle all cases correctly, and in the example
+ * below, with `cls=A` will not have any results, although it should include `Y`.
+ *
+ * ```py
+ * class A: pass
+ * class B(A): pass
+ * class X: pass
+ * class Y(X): pass
+ * class Ex(B, Y): pass
+ * ```
+ *
+ * NOTE for debugging the results of this predicate: Since a class can be part of
+ * multiple MROs, results from this predicate might only be valid in some, but not all,
+ * inheritance chains (such as the result `C` for `cls=B` in the example below -- this
+ * might be difficult to see if the definition of `D` is located in an other file)
+ *
+ * For more info on the C3 MRO used in Python see:
+ * - https://docs.python.org/3/glossary.html#term-method-resolution-order
+ * - https://www.python.org/download/releases/2.3/mro/
+ */
+private Class getNextClassInMro(Class cls) {
+  // class A(B, ...):
+  // `B` can be the next class after `A` in MRO.
+  cls.getBase(0) = classTracker(result).asExpr()
+  or
+  // class A(B, C, D):
+  // - `C` can be the next class after `B` in MRO.
+  // - `D` can be the next class after `C` in MRO.
+  // TODO: in some cases, C can be next class after superclass of B in MRO (when that superclass is the last in the MRO of B not in MRO of C or in MRO of D)
+  exists(Class sub, int i |
+    sub.getBase(i) = classTracker(cls).asExpr() and
+    sub.getBase(i + 1) = classTracker(result).asExpr() and
+    not result = cls
+  )
+  // There are two important properties for MRO computed with C3 in Python:
+  //
+  // 1) monotonicity: if C1 precedes C2 in the MRO of C, then C1 precedes C2 in the MRO
+  //    of any subclass of C.
+  // 2) local precedence ordering: if C1 precedes C2 in the list of superclasses, they
+  //    will keep the same order in the MRO for C (and due to monotonicity, any
+  //    subclass).
+}
+
+/**
+ * Gets a potential definition of the function `name` according to our approximation of
+ * MRO for the class `cls` (see `getNextClassInMro` for more information).
+ */
+Function findFunctionAccordingToMro(Class cls, string name) {
+  result = cls.getAMethod() and
+  result.getName() = name
+  or
+  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
+  result = findFunctionAccordingToMro(getNextClassInMro(cls), name)
+}
+
+/**
  * Holds if `call` is a call to a method `target` on an instance or class, where the
  * instance or class is not derived from an implicit `self`/`cls` argument to a method
  * -- for that, see `callWithinMethodImplicitSelfOrCls`.
@@ -583,8 +650,7 @@ predicate fromSuper(
     or
     attr.accesses(superCallTwoArgumentTracker(classUsedInSuper, self), functionName)
   ) and
-  // TODO: Take MRO properly into account when looking for target
-  target = findFunctionStartingInClass(getADirectSuperclass(classUsedInSuper), functionName)
+  target = findFunctionAccordingToMro(getNextClassInMro(classUsedInSuper), functionName)
 }
 
 /**
