@@ -1,8 +1,8 @@
 failures
 debug_callableNotUnique
-| code/class_properties.py:7:5:7:18 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
-| code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
-| code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
+| code/class_properties.py:7:5:7:18 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
+| code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
+| code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 pointsTo_found_typeTracker_notFound
 | code/class_super.py:50:1:50:6 | ControlFlowNode for Attribute() | outside_def |
 pointsTo_notFound_typeTracker_found

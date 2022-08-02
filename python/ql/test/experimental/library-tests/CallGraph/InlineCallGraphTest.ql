@@ -39,7 +39,9 @@ class CallGraphTest extends InlineExpectationsTest {
     |
       location = call.getLocation() and
       element = call.toString() and
-      value = betterQualName(target)
+      if call.getLocation().getFile() = target.getLocation().getFile()
+      then value = betterQualName(target)
+      else value = target.getLocation().getFile() + ":" + betterQualName(target)
     )
   }
 }
@@ -57,9 +59,14 @@ string betterQualName(Function func) {
 }
 
 query predicate debug_callableNotUnique(Function callable, string message) {
-  exists(Function f | f != callable and f.getQualifiedName() = callable.getQualifiedName()) and
+  exists(Function f |
+    f != callable and
+    f.getQualifiedName() = callable.getQualifiedName() and
+    f.getLocation().getFile() = callable.getLocation().getFile()
+  ) and
   message =
-    "Qualified function name '" + callable.getQualifiedName() + "' is not unique. Please fix."
+    "Qualified function name '" + callable.getQualifiedName() +
+      "' is not unique within its file. Please fix."
 }
 
 query predicate pointsTo_found_typeTracker_notFound(CallNode call, string qualname) {
