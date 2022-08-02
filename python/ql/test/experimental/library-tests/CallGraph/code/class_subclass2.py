@@ -23,7 +23,7 @@ class Y:
 class Contrived(X, Y, Base):
     pass
 
-contrived = Contrived() # $ tt=X.__init__ SPURIOUS: tt=HasInit.__init__
+contrived = Contrived() # $ tt=X.__init__
 contrived.foo() # $ pt,tt=X.foo
 contrived.call_stuff() # $ pt,tt=Base.call_stuff
 

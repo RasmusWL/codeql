@@ -759,13 +759,13 @@ class StaticmethodCall extends MethodCall {
 }
 
 Function invokedFunctionFromClassConstruction(Class cls) {
-  result = findFunctionAccordingToMro(cls, "__new__")
+  result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__new__")
   or
   // as described in https://docs.python.org/3/reference/datamodel.html#object.__new__
   // __init__ will only be called when __new__ returns an instance of the class (which
   // is not a requirement). However, for simplicity, we assume that __init__ will always
   // be called.
-  result = findFunctionAccordingToMro(cls, "__init__")
+  result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__init__")
 }
 
 /** A call to a class. */
