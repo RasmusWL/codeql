@@ -345,24 +345,6 @@ Class getADirectSuperclass(Class cls) { cls.getABase() = classTracker(result).as
  */
 Class getADirectSubclass(Class cls) { cls = getADirectSuperclass(result) }
 
-/**
- * Gets a first function called `name` in subclass search starting in `cls`.
- *
- * Note that this does NOT follow MRO precisely, so if you have `class C(A, B)`,
- * and _both_ `A` and `B` defines a method with `name`, you will get both of them as
- * results.
- *
- * However, in the case where there is no multiple inheritance, this will give a precise
- * answer.
- */
-Function findFunctionStartingInClass(Class cls, string name) {
-  result = cls.getAMethod() and
-  result.getName() = name
-  or
-  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
-  result = findFunctionStartingInClass(getADirectSuperclass(cls), name)
-}
-
 private TypeTrackingNode selfTracker(TypeTracker t, Class cls) {
   t.start() and
   exists(Function func |
@@ -625,7 +607,7 @@ private predicate callWithinMethodImplicitSelfOrCls(
   Node self
 ) {
   // method call on self/cls reference from within a method
-  target = findFunctionStartingInClass(getADirectSubclass*(methodWithinClass), functionName) and
+  target = findFunctionAccordingToMro(getADirectSubclass*(methodWithinClass), functionName) and
   target.getName() = functionName and
   (
     call.getFunction() = clsAttrTracker(attr).asCfgNode() and
@@ -777,13 +759,13 @@ class StaticmethodCall extends MethodCall {
 }
 
 Function invokedFunctionFromClassConstruction(Class cls) {
-  result = findFunctionStartingInClass(cls, "__new__")
+  result = findFunctionAccordingToMro(cls, "__new__")
   or
   // as described in https://docs.python.org/3/reference/datamodel.html#object.__new__
   // __init__ will only be called when __new__ returns an instance of the class (which
   // is not a requirement). However, for simplicity, we assume that __init__ will always
   // be called.
-  result = findFunctionStartingInClass(cls, "__init__")
+  result = findFunctionAccordingToMro(cls, "__init__")
 }
 
 /** A call to a class. */

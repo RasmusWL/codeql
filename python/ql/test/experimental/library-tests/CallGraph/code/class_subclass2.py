@@ -4,7 +4,7 @@ class Base:
 
     def call_stuff(self):
         print("Base.call_stuff")
-        self.foo() # $ pt,tt=Base.foo pt,tt=X.foo SPURIOUS: tt=Y.foo
+        self.foo() # $ pt,tt=Base.foo pt,tt=X.foo
 
 class X:
     def __init__(self):
@@ -23,6 +23,16 @@ class Y:
 class Contrived(X, Y, Base):
     pass
 
-contrived = Contrived() # $ tt=X.__init__ SPURIOUS: tt=Y.__init__
+contrived = Contrived() # $ tt=X.__init__ SPURIOUS: tt=HasInit.__init__
 contrived.foo() # $ pt,tt=X.foo
 contrived.call_stuff() # $ pt,tt=Base.call_stuff
+
+# Ensure that we don't mix up __init__ resolution for Contrived() due to MRO
+# approximation
+
+class HasInit:
+    def __init__(self):
+        pass
+
+class TryingToTrickYou(Contrived, HasInit):
+    pass
