@@ -608,7 +608,6 @@ private predicate directCall(
     call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
     attr.accesses(classInstanceTracker(cls), functionName)
   ) and
-  // TODO: Maybe it's good enough to do self = attr.getObject??
   attr.accesses(self, functionName)
 }
 
@@ -635,7 +634,6 @@ private predicate callWithinMethodImplicitSelfOrCls(
     call.getFunction() = selfAttrTracker(attr).asCfgNode() and
     attr.accesses(selfTracker(methodWithinClass), functionName)
   ) and
-  // TODO: Maybe it's good enough to do self = attr.getObject??
   attr.accesses(self, functionName)
 }
 
