@@ -412,6 +412,90 @@ private TypeTrackingNode clsAttrTracker(TypeTracker t, AttrRead attr) {
 
 Node clsAttrTracker(AttrRead attr) { clsAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
 
+/** Gets a reference to `super`. */
+private TypeTrackingNode superTracker(TypeTracker t) {
+  t.start() and
+  exists(NameNode id | id.getId() = "super" and id.isGlobal() | result.asCfgNode() = id)
+  or
+  exists(TypeTracker t2 | result = superTracker(t2).track(t2, t))
+}
+
+/** Gets a reference to `super`. */
+Node superTracker() { superTracker(TypeTracker::end()).flowsTo(result) }
+
+/**
+ * Gets a reference to the result of calling `super` without any argument, where the
+ * call happened in the method `func` (either a method or a class-method).
+ */
+private TypeTrackingNode superCallNoArgumentTracker(TypeTracker t, Function func) {
+  not hasStaticmethodDecorator(func) and
+  t.start() and
+  exists(CallCfgNode call | result = call |
+    call.getFunction() = superTracker() and
+    not exists(call.getArg(_)) and
+    // TODO: we actually want the inner-most function that contains the expression,
+    // in case of nested function definitions
+    func.contains(call.asExpr())
+  )
+  or
+  exists(TypeTracker t2 | result = superCallNoArgumentTracker(t2, func).track(t2, t))
+}
+
+/**
+ * Gets a reference to the result of calling `super` without any argument, where the
+ * call happened in the method `func`.
+ */
+Node superCallNoArgumentTracker(Function func) {
+  superCallNoArgumentTracker(TypeTracker::end(), func).flowsTo(result)
+}
+
+/**
+ * Gets a reference to the result of calling `super` with 2 arguments, where the
+ * first is a reference to the class `cls`, and the second argument is `obj`.
+ */
+private TypeTrackingNode superCallTwoArgumentTracker(TypeTracker t, Class cls, Node obj) {
+  t.start() and
+  exists(CallCfgNode call | result = call |
+    call.getFunction() = superTracker() and
+    call.getArg(0) = classTracker(cls) and
+    call.getArg(1) = obj
+  )
+  or
+  exists(TypeTracker t2 | result = superCallTwoArgumentTracker(t2, cls, obj).track(t2, t))
+}
+
+/**
+ * Gets a reference to the result of calling `super` with 2 arguments, where the
+ * first is a reference to the class `cls`, and the second argument is `obj`.
+ */
+Node superCallTwoArgumentTracker(Class cls, Node obj) {
+  superCallTwoArgumentTracker(TypeTracker::end(), cls, obj).flowsTo(result)
+}
+
+/**
+ * Gets a reference to an attribute lookup where the object is the result of a `super()`
+ * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
+ */
+private TypeTrackingNode superCallAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  (
+    attr.getObject() = superCallNoArgumentTracker(_)
+    or
+    attr.getObject() = superCallTwoArgumentTracker(_, _)
+  ) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = superCallAttrTracker(t2, attr).track(t2, t))
+}
+
+/**
+ * Gets a reference to an attribute lookup where the object is the result of a `super()`
+ * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
+ */
+Node superCallAttrTracker(AttrRead attr) {
+  superCallAttrTracker(TypeTracker::end(), attr).flowsTo(result)
+}
+
 /**
  * Holds if `call` is a call to a method `target` on an instance or class, where the
  * instance or class is not derived from an implicit `self`/`cls` argument to a method
@@ -467,6 +551,43 @@ private predicate callWithinMethodImplicitSelfOrCls(
 }
 
 /**
+ * Holds if `call` is a call to a method `target`, derived from a use of `super`, either
+ * as:
+ *
+ * (1) `super(SomeClass, obj)`, where the first argument is a reference to the class
+ * `classUsedInSuper`, and the second argument is `self`.
+ *
+ * (2) `super()`. This implicit version can only happen within a method in a class.
+ * The implicit first argument is the class the call happens within `classUsedInSuper`.
+ * The implicit second argument is the `self`/`cls` parameter of the method this happens
+ * within.
+ *
+ * The method call is found by making an attribute read `attr` with the name
+ * `functionName` on the return value from the `super` call.
+ */
+pragma[inline]
+predicate fromSuper(
+  CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
+  Node self
+) {
+  // method call on self/cls reference from within a method
+  target.getName() = functionName and
+  call.getFunction() = superCallAttrTracker(attr).asCfgNode() and
+  (
+    exists(Function func |
+      attr.accesses(superCallNoArgumentTracker(func), functionName) and
+      // TODO: Handling of nested scopes, and nested classes
+      func.getEnclosingScope() = classUsedInSuper and
+      self.(ParameterNode).getParameter() = func.getArg(0)
+    )
+    or
+    attr.accesses(superCallTwoArgumentTracker(classUsedInSuper, self), functionName)
+  ) and
+  // TODO: Take MRO properly into account when looking for target
+  target = findFunctionStartingInClass(getADirectSuperclass(classUsedInSuper), functionName)
+}
+
+/**
  * A call to a method on a class.
  *
  * These are separated further to handle different argument passing, but share a core
@@ -480,6 +601,8 @@ abstract class MethodCall extends NormalCall {
     directCall(call, target, _, _, _, self)
     or
     callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
+    or
+    fromSuper(call, target, _, _, _, self)
   }
 
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }

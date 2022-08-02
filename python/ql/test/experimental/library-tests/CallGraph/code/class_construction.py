@@ -9,7 +9,7 @@ print()
 class Y(X):
     def __init__(self, arg):
         print("Y.__init__", arg)
-        super().__init__(-arg) # $ pt=X.__init__ MISSING: tt=X.__init__
+        super().__init__(-arg) # $ pt,tt=X.__init__
 
 Y(43) # $ tt=Y.__init__
 print()

@@ -20,8 +20,8 @@ class B(A):
 
     def foo_on_super(self):
         print("B.foo_on_super")
-        super().foo() # $ pt=A.foo MISSING: tt
-        super(B, self).foo() # $ pt=A.foo MISSING: tt
+        super().foo() # $ pt,tt=A.foo
+        super(B, self).foo() # $ pt,tt=A.foo
 
     od = outside_def
 
@@ -40,8 +40,8 @@ class B(A):
     @classmethod
     def bar_on_super(cls):
         print("B.bar_on_super")
-        super().bar() # $ MISSING: tt=A.bar
-        super(B, cls).bar() # $ MISSING: tt=A.bar
+        super().bar() # $ tt=A.bar
+        super(B, cls).bar() # $ tt=A.bar
 
 
 b = B()
@@ -57,10 +57,10 @@ B.bar_on_super() # $ pt,tt=B.bar_on_super
 
 print("="*10, "Manual calls to super")
 
-super(B, b).foo() # $ pt=A.foo
+super(B, b).foo() # $ pt,tt=A.foo
 
 assert A.foo == super(B, B).foo
-super(B, B).foo(b)
+super(B, B).foo(b) # $ tt=A.foo
 
 try:
     super(B, 42).foo()
@@ -75,7 +75,7 @@ print("="*10, "C")
 class C(B):
     def foo_on_A(self):
         print('C.foo_on_A')
-        super(B, self).foo() # $ MISSING: tt=A.foo
+        super(B, self).foo() # $ tt=A.foo
 
 c = C()
 c.foo_on_A() # $ tt=C.foo_on_A
@@ -89,12 +89,12 @@ class X(object):
 class Y(X):
     def foo(self):
         print('Y.foo')
-        super().foo() # $ MISSING: tt=X.foo
+        super().foo() # $ tt=X.foo
 
 class Z(X):
     def foo(self):
         print('Z.foo')
-        super().foo() # $ MISSING: tt=X.foo tt=Y.foo
+        super().foo() # $ tt=X.foo MISSING: tt=Y.foo
 
 print("! z.foo()")
 z = Z()

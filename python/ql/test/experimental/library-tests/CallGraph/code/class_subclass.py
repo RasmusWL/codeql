@@ -128,7 +128,7 @@ class Sub(Base):
 
     def foo_on_super(self):
         sup = super()
-        sup.foo() # $ pt=Base.foo MISSING: tt=Base.foo
+        sup.foo() # $ pt,tt=Base.foo
 
     def also_call_stuff(self):
         self.sm() # $ pt,tt=Base.sm

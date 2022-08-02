@@ -4,16 +4,17 @@ debug_callableNotUnique
 | code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
 | code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique. Please fix. |
 pointsTo_found_typeTracker_notFound
-| code/class_construction.py:12:9:12:30 | ControlFlowNode for Attribute() | X.__init__ |
-| code/class_subclass.py:131:9:131:17 | ControlFlowNode for Attribute() | Base.foo |
-| code/class_super.py:23:9:23:21 | ControlFlowNode for Attribute() | A.foo |
-| code/class_super.py:24:9:24:28 | ControlFlowNode for Attribute() | A.foo |
 | code/class_super.py:50:1:50:6 | ControlFlowNode for Attribute() | outside_def |
-| code/class_super.py:60:1:60:17 | ControlFlowNode for Attribute() | A.foo |
 pointsTo_notFound_typeTracker_found
 | code/class_subclass.py:66:1:66:15 | ControlFlowNode for Attribute() | D.some_method |
 | code/class_subclass.py:72:1:72:15 | ControlFlowNode for Attribute() | C.some_method |
+| code/class_super.py:43:9:43:21 | ControlFlowNode for Attribute() | A.bar |
+| code/class_super.py:44:9:44:27 | ControlFlowNode for Attribute() | A.bar |
+| code/class_super.py:63:1:63:18 | ControlFlowNode for Attribute() | A.foo |
+| code/class_super.py:78:9:78:28 | ControlFlowNode for Attribute() | A.foo |
 | code/class_super.py:81:1:81:12 | ControlFlowNode for Attribute() | C.foo_on_A |
+| code/class_super.py:92:9:92:21 | ControlFlowNode for Attribute() | X.foo |
+| code/class_super.py:97:9:97:21 | ControlFlowNode for Attribute() | X.foo |
 | code/class_super.py:101:1:101:7 | ControlFlowNode for Attribute() | Z.foo |
 | code/class_super.py:108:1:108:8 | ControlFlowNode for Attribute() | Y.foo |
 | code/class_super.py:108:1:108:8 | ControlFlowNode for Attribute() | Z.foo |
