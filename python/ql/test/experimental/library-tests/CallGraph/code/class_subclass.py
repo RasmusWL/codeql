@@ -27,9 +27,9 @@ A.some_staticmethod() # $ pt,tt=A.some_staticmethod
 A.some_classmethod() # $ pt,tt=A.some_classmethod
 
 print("- type()")
-type(a).some_method(a) # $ pt=A.some_method MISSING: tt
-type(a).some_staticmethod() # $ pt=A.some_staticmethod MISSING: tt
-type(a).some_classmethod() # $ pt=A.some_classmethod MISSING: tt
+type(a).some_method(a) # $ pt,tt=A.some_method
+type(a).some_staticmethod() # $ pt,tt=A.some_staticmethod
+type(a).some_classmethod() # $ pt,tt=A.some_classmethod
 
 # Subclass test
 print("\n! B")
@@ -47,9 +47,9 @@ B.some_staticmethod() # $ pt,tt=A.some_staticmethod
 B.some_classmethod() # $ pt,tt=A.some_classmethod
 
 print("- type()")
-type(b).some_method(b) # $ pt=A.some_method MISSING: tt
-type(b).some_staticmethod() # $ pt=A.some_staticmethod MISSING: tt
-type(b).some_classmethod() # $ pt=A.some_classmethod MISSING: tt
+type(b).some_method(b) # $ pt,tt=A.some_method
+type(b).some_staticmethod() # $ pt,tt=A.some_staticmethod
+type(b).some_classmethod() # $ pt,tt=A.some_classmethod
 
 # Subclass with method override
 print("\n! Subclass with method override")
@@ -98,8 +98,8 @@ class Base(object):
         self.sm2() # $ pt,tt=Base.sm2 pt,tt=Sub.sm2
         self.cm2() # $ pt,tt=Base.cm2 pt,tt=Sub.cm2
 
-        type(self).sm2() # $ pt=Base.sm2 pt=Sub.sm2 MISSING: tt
-        type(self).cm2() # $ pt=Base.cm2 pt=Sub.cm2 MISSING: tt
+        type(self).sm2() # $ pt,tt=Base.sm2 pt,tt=Sub.sm2
+        type(self).cm2() # $ pt,tt=Base.cm2 pt,tt=Sub.cm2
 
     @staticmethod
     def sm():

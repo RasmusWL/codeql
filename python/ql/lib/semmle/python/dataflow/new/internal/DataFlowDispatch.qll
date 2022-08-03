@@ -289,6 +289,13 @@ class PlainFunctionCall extends NormalCall {
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
 }
 
+/** Gets a call to `type`. */
+private CallCfgNode getTypeCall() {
+  exists(NameNode id | id.getId() = "type" and id.isGlobal() |
+    result.getFunction().asCfgNode() = id
+  )
+}
+
 private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
   t.start() and
   (
@@ -297,6 +304,10 @@ private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
     // when a class is decorated, it's the result of the (last) decorator call that
     // is used
     result.asExpr() = cls.getParent().(ClassExpr).getADecoratorCall()
+    or
+    // `type(obj)`, where obj is an instance of this class
+    result = getTypeCall() and
+    result.(CallCfgNode).getArg(0) = classInstanceTracker(cls)
   )
   or
   exists(TypeTracker t2 | result = classTracker(t2, cls).track(t2, t))
@@ -378,11 +389,17 @@ Node selfAttrTracker(AttrRead attr) { selfAttrTracker(TypeTracker::end(), attr).
 
 private TypeTrackingNode clsTracker(TypeTracker t, Class cls) {
   t.start() and
-  exists(Function func |
-    func = cls.getAMethod() and
-    hasClassmethodDecorator(func)
-  |
-    result.asExpr() = func.getArg(0)
+  (
+    exists(Function func |
+      func = cls.getAMethod() and
+      hasClassmethodDecorator(func)
+    |
+      result.asExpr() = func.getArg(0)
+    )
+    or
+    // type(self)
+    result = getTypeCall() and
+    result.(CallCfgNode).getArg(0) = selfTracker(cls)
   )
   or
   exists(TypeTracker t2 | result = clsTracker(t2, cls).track(t2, t))
