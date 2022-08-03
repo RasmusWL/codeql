@@ -4,6 +4,10 @@ debug_callableNotUnique
 | code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 | code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 pointsTo_found_typeTracker_notFound
+| code/class_decorator.py:13:1:13:7 | ControlFlowNode for Attribute() | A.foo |
+| code/class_decorator.py:17:9:17:18 | ControlFlowNode for Attribute() | A.foo |
+| code/class_decorator.py:30:1:30:7 | ControlFlowNode for Attribute() | X.foo |
+| code/class_decorator.py:34:9:34:18 | ControlFlowNode for Attribute() | X.foo |
 | code/class_super.py:50:1:50:6 | ControlFlowNode for Attribute() | outside_def |
 pointsTo_notFound_typeTracker_found
 | code/class_more_mro2.py:18:9:18:21 | ControlFlowNode for Attribute() | A.foo |
