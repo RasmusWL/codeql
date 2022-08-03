@@ -20,4 +20,5 @@ pointsTo_notFound_typeTracker_found
 | code/class_super.py:97:9:97:21 | ControlFlowNode for Attribute() | Y.foo |
 | code/class_super.py:101:1:101:7 | ControlFlowNode for Attribute() | Z.foo |
 | code/class_super.py:108:1:108:8 | ControlFlowNode for Attribute() | Z.foo |
+| code/def_in_function.py:22:5:22:11 | ControlFlowNode for Attribute() | test.A.foo |
 | code/underscore_prefix_func_name.py:14:5:14:19 | ControlFlowNode for some_function() | some_function |
