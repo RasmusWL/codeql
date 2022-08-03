@@ -291,7 +291,13 @@ class PlainFunctionCall extends NormalCall {
 
 private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
   t.start() and
-  result.asExpr() = cls.getParent()
+  (
+    result.asExpr() = cls.getParent()
+    or
+    // when a class is decorated, it's the result of the (last) decorator call that
+    // is used
+    result.asExpr() = cls.getParent().(ClassExpr).getADecoratorCall()
+  )
   or
   exists(TypeTracker t2 | result = classTracker(t2, cls).track(t2, t))
 }

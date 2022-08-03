@@ -10,11 +10,11 @@ class A:
         pass
 
 a = A()
-a.foo() # $ pt=A.foo MISSING: tt
+a.foo() # $ pt,tt=A.foo
 
 class B(A):
     def bar(self):
-        self.foo() # $ pt=A.foo MISSING: tt
+        self.foo() # $ pt,tt=A.foo
 
 
 # decorated class, unknown decorator
@@ -27,8 +27,8 @@ class X:
         pass
 
 x = X()
-x.foo() # $ pt=X.foo MISSING: tt
+x.foo() # $ pt,tt=X.foo
 
 class Y(X):
     def bar(self):
-        self.foo() # $ pt=X.foo MISSING: tt
+        self.foo() # $ pt,tt=X.foo
