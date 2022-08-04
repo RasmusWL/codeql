@@ -25,7 +25,7 @@ class One extends SmallInt {
     this.getValue() = 1
   }
 
-  override string why() { result = "one" }
+  override string why() { none() }
 }
 
 // Non-monotonic recursion:

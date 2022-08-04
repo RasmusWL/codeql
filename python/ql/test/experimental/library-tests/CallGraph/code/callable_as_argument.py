@@ -3,7 +3,7 @@
 # ==============================================================================
 
 def call_func(f):
-    f() # $ pt=my_func pt=test_func.inside_test_func MISSING: tt=my_func tt=test_func.inside_test_func
+    f() # $ pt,tt=my_func pt,tt=test_func.inside_test_func
 
 
 def my_func():
@@ -26,8 +26,8 @@ test_func() # $ pt,tt=test_func
 # ==============================================================================
 
 def class_func(cls):
-    cls.sm() # $ pt=MyClass.sm # $ MISSING: tt=MyClass.sm tt=InsideTestFunc.sm
-    cls(42) # $ MISSING: tt=MyClass.__init__ tt=InsideTestFunc.__init__
+    cls.sm() # $ pt,tt=MyClass.sm tt=test_class.InsideTestFunc.sm
+    cls(42) # $ tt=MyClass.__init__ tt=test_class.InsideTestFunc.__init__
 
 
 class MyClass:

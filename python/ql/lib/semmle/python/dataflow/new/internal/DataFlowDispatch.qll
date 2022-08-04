@@ -191,7 +191,172 @@ class DataFlowModuleScope extends DataFlowCallable, TModule {
   override ParameterNode getParameter(ParameterPosition ppos) { none() }
 }
 
-newtype TDataFlowCall = TNormalCall(CallNode call)
+newtype TCallType =
+  TypePlainFunctionCall() or
+  TypeNormalMethodCall() or
+  TypeStaticMethodCall() or
+  TypeClassMethodCall() or
+  TypeMethodAsPlainFunctionCall() or
+  TypeClassCall()
+
+class CallType extends TCallType {
+  string toString() {
+    this instanceof TypePlainFunctionCall and
+    result = "TypePlainFunctionCall"
+    or
+    this instanceof TypeNormalMethodCall and
+    result = "TypeNormalMethodCall"
+    or
+    this instanceof TypeStaticMethodCall and
+    result = "TypeStaticMethodCall"
+    or
+    this instanceof TypeClassMethodCall and
+    result = "TypeClassMethodCall"
+    or
+    this instanceof TypeMethodAsPlainFunctionCall and
+    result = "TypeMethodAsPlainFunctionCall"
+    or
+    this instanceof TypeClassCall and
+    result = "TypeClassCall"
+  }
+}
+
+// TODO: this has TERRIBLE performance though
+predicate resolveMethodCall(ControlFlowNode call, Function target, CallType type, Node self) {
+  (
+    directCall(call, target, _, _, _, self)
+    or
+    callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
+    or
+    fromSuper(call, target, _, _, _, self)
+  ) and
+  (
+    // normal method call
+    type instanceof TypeNormalMethodCall and
+    (
+      self = classInstanceTracker(_)
+      or
+      self = selfTracker(_)
+    ) and
+    not hasStaticmethodDecorator(target) and
+    not hasClassmethodDecorator(target)
+    or
+    // method as plain function call
+    type instanceof TypeMethodAsPlainFunctionCall and
+    self = classTracker(_) and
+    not hasStaticmethodDecorator(target) and
+    not hasClassmethodDecorator(target)
+    or
+    // staticmethod call
+    type instanceof TypeStaticMethodCall and
+    hasStaticmethodDecorator(target)
+    or
+    // classmethod call
+    type instanceof TypeClassMethodCall and
+    hasClassmethodDecorator(target)
+  )
+}
+
+/**
+ * Holds when `call` is a call to the class `cls`.
+ *
+ * NOTE: We have this predicate mostly to be able to compare with old point-to
+ * call-graph resolution. So it could be removed in the future.
+ */
+predicate resolveClassCall(CallNode call, Class cls) {
+  call.getFunction() = classTracker(cls).asCfgNode()
+}
+
+predicate resolveCall(ControlFlowNode call, Function target, CallType type) {
+  type instanceof TypePlainFunctionCall and
+  call.(CallNode).getFunction() = functionTracker(target).asCfgNode() and
+  not exists(Class cls | cls.getAMethod() = target)
+  or
+  resolveMethodCall(call, target, type, _)
+  or
+  type instanceof TypeClassCall and
+  exists(Class cls |
+    resolveClassCall(call, cls) and
+    target = invokedFunctionFromClassConstruction(cls)
+  )
+
+}
+
+private predicate normalCallArg(CallNode call, Node arg, ArgumentPosition apos) {
+  exists(int index |
+    apos.isPositional(index) and
+    arg.asCfgNode() = call.getArg(index)
+  )
+  or
+  exists(string name |
+    apos.isKeyword(name) and
+    arg.asCfgNode() = call.getArgByName(name)
+  )
+}
+
+// TODO: need to highlight that target is actually needed, to avoid cross-talk in
+// if cond:
+//     func = objx.setx
+// else:
+//     func = objy.sety
+//
+// # What we're testing for is whether both objects are passed as self to both methods,
+// # which would be wrong.
+//
+// func(42)
+//
+predicate getCallArg(ControlFlowNode call, Function target, CallType type, Node arg, ArgumentPosition apos) {
+  // normal calls with a real call node
+  resolveCall(call, target, type) and
+  call instanceof CallNode and
+  (
+    type instanceof TypePlainFunctionCall and
+    normalCallArg(call, arg, apos)
+    or
+    // self argument for normal method calls/cls argument for classmethod calls
+    (type instanceof TypeNormalMethodCall or type instanceof TypeClassMethodCall) and
+    apos.isSelf() and
+    resolveMethodCall(call, target, type, arg)
+    or
+    // normal arguments for method calls
+    (
+      type instanceof TypeNormalMethodCall or
+      type instanceof TypeStaticMethodCall or
+      type instanceof TypeClassMethodCall
+    ) and
+    normalCallArg(call, arg, apos)
+    or
+    // method as plain function call.
+    //
+    // argument index 0 of call has position self (and MUST be given as positional
+    // argument in call). This also means that call-arguments are shifted by 1, such
+    // that argument index 1 of call has argument position 0
+    type instanceof TypeMethodAsPlainFunctionCall and
+    (
+      apos.isSelf() and arg.asCfgNode() = call.(CallNode).getArg(0)
+      or
+      not apos.isPositional(_) and normalCallArg(call, arg, apos)
+      or
+      exists(ArgumentPosition normalPos, int index |
+        apos.isPositional(index - 1) and
+        normalPos.isPositional(index) and
+        normalCallArg(call, arg, normalPos)
+      )
+    )
+    or
+    // class call
+    type instanceof TypeClassCall and
+    (
+      apos.isSelf() and
+      arg = TSyntheticPreUpdateNode(call)
+      or
+      normalCallArg(call, arg, apos)
+    )
+  )
+}
+
+newtype TDataFlowCall =
+  TNormalCall(CallNode call, Function target, CallType type) { resolveCall(call, target, type) }
 
 /** A dataflow call. */
 abstract class DataFlowCall extends TDataFlowCall {
@@ -212,6 +377,24 @@ abstract class DataFlowCall extends TDataFlowCall {
 
   /** Gets the argument at position `apos`, if any. */
   abstract ArgumentNode getArgument(ArgumentPosition apos);
+}
+
+class NewNormalCall extends DataFlowCall, TNormalCall {
+  CallNode call;
+  Function target;
+  CallType type;
+
+  NewNormalCall() { this = TNormalCall(call, target, type) }
+
+  override string toString() { result = "[" + type + "->" + target.getQualifiedName() + "]" + call.toString() }
+
+  override ControlFlowNode getNode() { result = call }
+
+  override DataFlowCallable getEnclosingCallable() { result.getScope() = call.getScope() }
+
+  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) { getCallArg(call, target, type, result, apos) }
 }
 
 /** Holds if the function has a `staticmethod` decorator. */
@@ -249,48 +432,34 @@ private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
  */
 Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).flowsTo(result) }
 
-/** A normal call, with an underlying `CallNode`. */
-abstract class NormalCall extends DataFlowCall, TNormalCall {
-  CallNode call;
-
-  NormalCall() { this = TNormalCall(call) }
-
-  override string toString() { result = call.toString() }
-
-  override ControlFlowNode getNode() { result = call }
-
-  override DataFlowCallable getEnclosingCallable() { result.getScope() = call.getScope() }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) {
-    exists(int index |
-      apos.isPositional(index) and
-      result.asCfgNode() = call.getArg(index)
-    )
-    or
-    exists(string name |
-      apos.isKeyword(name) and
-      result.asCfgNode() = call.getArgByName(name)
-    )
-  }
-}
-
-/**
- * A call to a plain function, not including methods in general, but including
- * staticmethods accessed on a class reference (`MyClass.my_staticmethod()`).
- */
-class PlainFunctionCall extends NormalCall {
-  Function target;
-
-  PlainFunctionCall() {
-    call.getFunction() = functionTracker(target).asCfgNode() and
-    not exists(Class cls | cls.getAMethod() = target)
-  }
-
-  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-
-  // override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
-}
-
+// /** A normal call, with an underlying `CallNode`. */
+// abstract class NormalCall extends DataFlowCall, TNormalCall {
+//   CallNode call;
+//   NormalCall() { this = TNormalCall(call) }
+//   override string toString() { result = call.toString() }
+//   override ControlFlowNode getNode() { result = call }
+//   override DataFlowCallable getEnclosingCallable() { result.getScope() = call.getScope() }
+//   override ArgumentNode getArgument(ArgumentPosition apos) {
+//     exists(int index |
+//       apos.isPositional(index) and
+//       result.asCfgNode() = call.getArg(index)
+//     )
+//     or
+//     exists(string name |
+//       apos.isKeyword(name) and
+//       result.asCfgNode() = call.getArgByName(name)
+//     )
+//   }
+// }
+// class PlainFunctionCall extends NormalCall {
+//   Function target;
+//   PlainFunctionCall() {
+//     call.getFunction() = functionTracker(target).asCfgNode() and
+//     not exists(Class cls | cls.getAMethod() = target)
+//   }
+//   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+//   // override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
+// }
 /** Gets a call to `type`. */
 private CallCfgNode getTypeCall() {
   exists(NameNode id | id.getId() = "type" and id.isGlobal() |
@@ -644,6 +813,14 @@ private predicate callWithinMethodImplicitSelfOrCls(
   attr.accesses(self, functionName)
 }
 
+predicate oops(
+  CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
+  Node self
+) {
+  fromSuper(call, target, functionName, classUsedInSuper, attr, self) and
+  not self instanceof ArgumentNode
+}
+
 /**
  * Holds if `call` is a call to a method `target`, derived from a use of `super`, either
  * as:
@@ -680,113 +857,102 @@ predicate fromSuper(
   target = findFunctionAccordingToMro(getNextClassInMro(classUsedInSuper), functionName)
 }
 
-/**
- * A call to a method on a class.
- *
- * These are separated further to handle different argument passing, but share a core
- * logic of attribute lookup going through inheritance.
- */
-abstract class MethodCall extends NormalCall {
-  Function target;
-  Node self;
-
-  MethodCall() {
-    directCall(call, target, _, _, _, self)
-    or
-    callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
-    or
-    fromSuper(call, target, _, _, _, self)
-  }
-
-  override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-}
-
-/**
- * A call to an "normal" method on a class instance.
- * Does not include staticmethods or classmethods.
- *
- * See 'instance methods' in https://docs.python.org/3/reference/datamodel.html
- */
-class NormalMethodCall extends MethodCall {
-  NormalMethodCall() {
-    (
-      self = classInstanceTracker(_)
-      or
-      self = selfTracker(_)
-    ) and
-    not hasStaticmethodDecorator(target) and
-    not hasClassmethodDecorator(target)
-  }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) {
-    result = super.getArgument(apos)
-    or
-    apos.isSelf() and
-    result = self
-  }
-  // override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-  // override DataFlowCallable getCallable() { result = super.getCallable() }
-}
-
-/**
- * A call to method on a class, not going through an instance method, such as
- *
- * ```py
- * class Foo:
- *     def method(self, arg):
- *         pass
- *
- * foo = Foo()
- * Foo.method(foo, 42)
- * ```
- */
-class MethodAsPlainFunctionCall extends MethodCall {
-  MethodAsPlainFunctionCall() {
-    self = classTracker(_) and
-    not hasStaticmethodDecorator(target) and
-    not hasClassmethodDecorator(target)
-  }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) {
-    apos.isSelf() and result.asCfgNode() = call.getArg(0)
-    or
-    exists(int index |
-      apos.isPositional(index) and
-      result.asCfgNode() = call.getArg(index + 1)
-    )
-    or
-    exists(string name |
-      apos.isKeyword(name) and
-      result.asCfgNode() = call.getArgByName(name)
-    )
-  }
-}
-
-/** A call to a classmethod. */
-class ClassmethodCall extends MethodCall {
-  ClassmethodCall() { hasClassmethodDecorator(target) }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) {
-    result = super.getArgument(apos)
-    or
-    // only set `self` argument when it's a class, and not when it's a class instance.
-    apos.isSelf() and
-    result = self and
-    (
-      self = classTracker(_)
-      or
-      self = clsTracker(_)
-    )
-  }
-}
-
-/** A call to a staticmethod. */
-class StaticmethodCall extends MethodCall {
-  StaticmethodCall() { hasStaticmethodDecorator(target) }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
-}
-
+// /**
+//  * A call to a method on a class.
+//  *
+//  * These are separated further to handle different argument passing, but share a core
+//  * logic of attribute lookup going through inheritance.
+//  */
+// abstract class MethodCall extends NormalCall {
+//   Function target;
+//   Node self;
+//   MethodCall() {
+//     directCall(call, target, _, _, _, self)
+//     or
+//     callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
+//     or
+//     fromSuper(call, target, _, _, _, self)
+//   }
+//   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+// }
+// /**
+//  * A call to an "normal" method on a class instance.
+//  * Does not include staticmethods or classmethods.
+//  *
+//  * See 'instance methods' in https://docs.python.org/3/reference/datamodel.html
+//  */
+// class NormalMethodCall extends MethodCall {
+//   NormalMethodCall() {
+//     (
+//       self = classInstanceTracker(_)
+//       or
+//       self = selfTracker(_)
+//     ) and
+//     not hasStaticmethodDecorator(target) and
+//     not hasClassmethodDecorator(target)
+//   }
+//   override ArgumentNode getArgument(ArgumentPosition apos) {
+//     result = super.getArgument(apos)
+//     or
+//     apos.isSelf() and
+//     result = self
+//   }
+//   // override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+//   // override DataFlowCallable getCallable() { result = super.getCallable() }
+// }
+// /**
+//  * A call to method on a class, not going through an instance method, such as
+//  *
+//  * ```py
+//  * class Foo:
+//  *     def method(self, arg):
+//  *         pass
+//  *
+//  * foo = Foo()
+//  * Foo.method(foo, 42)
+//  * ```
+//  */
+// class MethodAsPlainFunctionCall extends MethodCall {
+//   MethodAsPlainFunctionCall() {
+//     self = classTracker(_) and
+//     not hasStaticmethodDecorator(target) and
+//     not hasClassmethodDecorator(target)
+//   }
+//   override ArgumentNode getArgument(ArgumentPosition apos) {
+//     apos.isSelf() and result.asCfgNode() = call.getArg(0)
+//     or
+//     exists(int index |
+//       apos.isPositional(index) and
+//       result.asCfgNode() = call.getArg(index + 1)
+//     )
+//     or
+//     exists(string name |
+//       apos.isKeyword(name) and
+//       result.asCfgNode() = call.getArgByName(name)
+//     )
+//   }
+// }
+// /** A call to a classmethod. */
+// class ClassmethodCall extends MethodCall {
+//   ClassmethodCall() { hasClassmethodDecorator(target) }
+//   override ArgumentNode getArgument(ArgumentPosition apos) {
+//     result = super.getArgument(apos)
+//     or
+//     // only set `self` argument when it's a class, and not when it's a class instance.
+//     apos.isSelf() and
+//     result = self and
+//     (
+//       self = classTracker(_)
+//       or
+//       self = clsTracker(_)
+//     )
+//   }
+// }
+// /** A call to a staticmethod. */
+// class StaticmethodCall extends MethodCall {
+//   StaticmethodCall() { hasStaticmethodDecorator(target) }
+//   override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
+// }
 Function invokedFunctionFromClassConstruction(Class cls) {
   result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__new__")
   or
@@ -797,29 +963,22 @@ Function invokedFunctionFromClassConstruction(Class cls) {
   result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__init__")
 }
 
-/** A call to a class. */
-class ClassCall extends NormalCall {
-  Class cls;
-
-  ClassCall() { call.getFunction() = classTracker(cls).asCfgNode() }
-
-  override DataFlowCallable getCallable() {
-    result.(DataFlowFunction).getScope() = invokedFunctionFromClassConstruction(cls)
-  }
-
-  Class getClass() { result = cls }
-
-  override ArgumentNode getArgument(ArgumentPosition apos) {
-    apos.isSelf() and
-    result = TSyntheticPreUpdateNode(call)
-    or
-    result = super.getArgument(apos)
-  }
-}
-
-predicate wat(DataFlowCall call, ArgumentPosition apos, Node arg) {
-  arg = call.getArgument(apos)
-}
+// /** A call to a class. */
+// class ClassCall extends NormalCall {
+//   Class cls;
+//   ClassCall() { call.getFunction() = classTracker(cls).asCfgNode() }
+//   override DataFlowCallable getCallable() {
+//     result.(DataFlowFunction).getScope() = invokedFunctionFromClassConstruction(cls)
+//   }
+//   Class getClass() { result = cls }
+//   override ArgumentNode getArgument(ArgumentPosition apos) {
+//     apos.isSelf() and
+//     result = TSyntheticPreUpdateNode(call)
+//     or
+//     result = super.getArgument(apos)
+//   }
+// }
+predicate wat(DataFlowCall call, ArgumentPosition apos, Node arg) { arg = call.getArgument(apos) }
 
 // Non-monotonic recursion:
 // characteristic predicate of DataFlowDispatch::ClassCall
@@ -842,7 +1001,6 @@ predicate wat(DataFlowCall call, ArgumentPosition apos, Node arg) {
 // ClassCall... in conclusion, whether a call is a classcall depends on whether it's a class call :|
 //
 // The compiler thinks it _could_ be the case that getArgument had no results
-
 // 1) if a call was part of ClassCall, that would be because we could track a class
 //    value to the function of that call, and the step that might have allowed this
 //    could have been a arg->param call step. However, now that this call is part of
@@ -864,8 +1022,6 @@ predicate wat(DataFlowCall call, ArgumentPosition apos, Node arg) {
 // covers that callables are resolved correctly, not that arguments are passed correctly :|
 //
 // I guess we do have the dataflow argument-passing tests that could be used :shrug:
-
-
 /** Gets a viable run-time target for the call `call`. */
 DataFlowCallable viableCallable(DataFlowCall call) { result = call.getCallable() }
 

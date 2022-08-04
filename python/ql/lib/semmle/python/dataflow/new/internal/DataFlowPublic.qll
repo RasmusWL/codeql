@@ -296,26 +296,7 @@ ParameterNode parameterNode(Parameter p) { result.getParameter() = p }
  * (This is not allowed in the char-pred, since it leads to non-monotonic recursion)
  */
 class ArgumentNode extends Node {
-  ArgumentNode() {
-    exists(CallNode call |
-      this.(CfgNode).getNode() = call.getArg(_)
-      or
-      this.(CfgNode).getNode() = call.getArgByName(_)
-      or
-      // for self in class constructor calls
-      this = TSyntheticPreUpdateNode(call)
-    )
-    or
-    // `self` for instance method calls
-    exists(AttrRead read |
-      // we don't ever want to treat the module in `from module import attr` as `self`,
-      // so we exclude these. (Since the ModuleAttributeImportAsAttrRead isn't exposed
-      // directly, we can't test for that, but have to do a .getNode workaround instead)
-      not read.(CfgNode).getNode() instanceof ImportMemberNode
-    |
-      read.getObject() = this
-    )
-  }
+  ArgumentNode() { getCallArg(_, _, _, this, _) }
 
   /** Holds if this argument occurs at the given position in the given call. */
   predicate argumentOf(DataFlowCall call, ArgumentPosition apos) { this = call.getArgument(apos) }

@@ -104,15 +104,20 @@ module TypeTrackingBasedCallGraph {
   class ResolvableCall extends RelevantCall {
     TT::DataFlowCall call;
 
-    ResolvableCall() { call = TT::TNormalCall(this) }
+    ResolvableCall() { call = TT::TNormalCall(this, _, _) }
 
     /** Gets a resolved target of this call. */
     Target getTarget() {
-      not call instanceof TT::ClassCall and
-      result.(TargetFunction).getFunction() =
-        TT::viableCallable(call).(TT::DataFlowFunction).getScope()
-      or
-      result.(TargetClass).getClass() = call.(TT::ClassCall).getClass()
+      exists(TT::CallType ct, Function targetFunc |
+        call = TT::TNormalCall(this, targetFunc, ct)
+      |
+        not ct instanceof TT::TypeClassCall and
+        targetFunc = result.(TargetFunction).getFunction()
+        or
+        ct instanceof TT::TypeClassCall and
+        TT::resolveClassCall(this, result.(TargetClass).getClass())
+
+      )
     }
   }
 

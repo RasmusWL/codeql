@@ -29,14 +29,17 @@ string getPossibleContentName() {
 
 /** Holds if `nodeFrom` steps to `nodeTo` by being passed as a parameter in a call. */
 predicate callStep(DataFlowPublic::ArgumentNode nodeFrom, DataFlowPublic::ParameterNode nodeTo) {
-  none()
+  // none()
   // TODO: this gives non-monotonic recursion
-  // exists(DataFlowPrivate::DataFlowCall call, DataFlowPrivate::DataFlowCallable callable, DataFlowPrivate::ArgumentPosition apos, DataFlowPrivate::ParameterPosition ppos |
-  //   nodeFrom = call.getArgument(apos) and
-  //   nodeTo = callable.getParameter(ppos) and
-  //   DataFlowPrivate::parameterMatch(ppos, apos) and
-  //   callable = call.getCallable()
-  // )
+  exists(
+    DataFlowPrivate::DataFlowCall call, DataFlowPrivate::DataFlowCallable callable,
+    DataFlowPrivate::ArgumentPosition apos, DataFlowPrivate::ParameterPosition ppos
+  |
+    nodeFrom = call.getArgument(apos) and
+    nodeTo = callable.getParameter(ppos) and
+    DataFlowPrivate::parameterMatch(ppos, apos) and
+    callable = call.getCallable()
+  )
 }
 
 /** Holds if `nodeFrom` steps to `nodeTo` by being returned from a call. */

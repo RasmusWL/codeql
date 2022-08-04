@@ -12,14 +12,14 @@ predicate pointsToCallEdge(CallNode call, Function callable) {
 
 /** A call graph edge resolved based on Type Trackers */
 predicate typeTrackerCallEdge(CallNode call, Function callable) {
-  TT::TFunction(callable) = TT::viableCallable(TT::TNormalCall(call))
+  TT::TFunction(callable) = TT::viableCallable(TT::TNormalCall(call, _, _))
 }
 
 /** Holds if the call edge is from a class call. */
 predicate typeTrackerClassCall(CallNode call, Function callable) {
-  exists(TT::ClassCall cc |
-    cc.getNode() = call and
-    TT::TFunction(callable) = cc.getCallable()
+  exists(TT::NewNormalCall cc |
+    cc = TT::TNormalCall(call, _, any(TT::TCallType t | t instanceof TT::TypeClassCall)) and
+    TT::TFunction(callable) = TT::viableCallable(cc)
   )
 }
 

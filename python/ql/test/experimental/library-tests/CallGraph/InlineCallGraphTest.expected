@@ -4,11 +4,9 @@ debug_callableNotUnique
 | code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 | code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 pointsTo_found_typeTracker_notFound
-| code/callable_as_argument.py:6:5:6:7 | ControlFlowNode for f() | my_func |
-| code/callable_as_argument.py:6:5:6:7 | ControlFlowNode for f() | test_func.inside_test_func |
-| code/callable_as_argument.py:29:5:29:12 | ControlFlowNode for Attribute() | MyClass.sm |
 | code/class_super.py:50:1:50:6 | ControlFlowNode for Attribute() | outside_def |
 pointsTo_notFound_typeTracker_found
+| code/callable_as_argument.py:29:5:29:12 | ControlFlowNode for Attribute() | test_class.InsideTestFunc.sm |
 | code/class_more_mro2.py:18:9:18:21 | ControlFlowNode for Attribute() | A.foo |
 | code/class_more_mro2.py:21:1:21:8 | ControlFlowNode for Attribute() | A.foo |
 | code/class_more_mro.py:24:9:24:21 | ControlFlowNode for Attribute() | A.foo |
