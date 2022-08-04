@@ -1,0 +1,2 @@
+| test.py:1:1:1:1 | IntegerLiteral | small |
+| test.py:2:1:2:1 | IntegerLiteral | small |

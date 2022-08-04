@@ -287,6 +287,8 @@ class PlainFunctionCall extends NormalCall {
   }
 
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+
+  // override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
 }
 
 /** Gets a call to `type`. */
@@ -722,6 +724,8 @@ class NormalMethodCall extends MethodCall {
     apos.isSelf() and
     result = self
   }
+  // override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
+  // override DataFlowCallable getCallable() { result = super.getCallable() }
 }
 
 /**
@@ -779,6 +783,8 @@ class ClassmethodCall extends MethodCall {
 /** A call to a staticmethod. */
 class StaticmethodCall extends MethodCall {
   StaticmethodCall() { hasStaticmethodDecorator(target) }
+
+  override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
 }
 
 Function invokedFunctionFromClassConstruction(Class cls) {
@@ -810,6 +816,55 @@ class ClassCall extends NormalCall {
     result = super.getArgument(apos)
   }
 }
+
+predicate wat(DataFlowCall call, ArgumentPosition apos, Node arg) {
+  arg = call.getArgument(apos)
+}
+
+// Non-monotonic recursion:
+// characteristic predicate of DataFlowDispatch::ClassCall
+// --> DataFlowDispatch::classTracker
+// --> DataFlowDispatch::classTracker
+// --> LocalSources::LocalSourceNode::track
+// --> TypeTracker::TypeTracker::step
+// --> TypeTracker::StepSummary::step
+// --> TypeTracker::Cached::stepCall
+// --> TypeTracker::smallstepCall
+// --> TypeTrackerSpecific::callStep
+// -!->(via dispatch of DataFlowDispatch::DataFlowCall::getArgument) DataFlowDispatch::ClassCall
+// --> characteristic predicate of DataFlowDispatch::ClassCall
+//
+// in human words:
+// Wheter a call is a class call, depends on whether we can track a class reference
+// using type-tracking. Type-tracking uses `getArgument` member-predicate to perform
+// this type-tracking. SO, whether a call is a ClassCall depends on `getArgument`
+// (through type tracking), and the results for _this_, depends on whether the call is a
+// ClassCall... in conclusion, whether a call is a classcall depends on whether it's a class call :|
+//
+// The compiler thinks it _could_ be the case that getArgument had no results
+
+// 1) if a call was part of ClassCall, that would be because we could track a class
+//    value to the function of that call, and the step that might have allowed this
+//    could have been a arg->param call step. However, now that this call is part of
+//    ClassCall, the ClassCall.getArgument might be the most specific implementation,
+//    and if that has no results we suddenly don't have a arg->param call step any
+//    longer...
+//
+// or is it like this? I think it's a bit of a bollocks argument, since
+// ClassCall.getArgument is going to happen in addition to the other most-specific
+// implementations... it WONT remove previously valid results...
+//
+// ACTUALLY, if something could be BOTH a plain function call, and a
+// method-as-plain-function-call, since plain function call doesn't override
+// getArgument, the most-specific implementation will be the
+// method-as-plain-function-call, and it won't be possible to treat arg0 as arg0 :O will
+// have to test this out though :O
+//
+// Will need some better test setup, since I already wrote such a test, but that only
+// covers that callables are resolved correctly, not that arguments are passed correctly :|
+//
+// I guess we do have the dataflow argument-passing tests that could be used :shrug:
+
 
 /** Gets a viable run-time target for the call `call`. */
 DataFlowCallable viableCallable(DataFlowCall call) { result = call.getCallable() }
