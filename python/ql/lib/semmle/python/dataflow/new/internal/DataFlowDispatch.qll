@@ -811,14 +811,6 @@ private predicate callWithinMethodImplicitSelfOrCls(
   attr.accesses(self, functionName)
 }
 
-predicate oops(
-  CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
-  Node self
-) {
-  fromSuper(call, target, functionName, classUsedInSuper, attr, self) and
-  not self instanceof ArgumentNode
-}
-
 /**
  * Holds if `call` is a call to a method `target`, derived from a use of `super`, either
  * as:
