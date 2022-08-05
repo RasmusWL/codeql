@@ -770,7 +770,6 @@ Function findFunctionAccordingToMroKnownStartingClass(Class cls, Class startingC
  * reference to the class `cls`, or to an instance of the class `cls`. The reference the
  * attribute-read is made on is `self`.
  */
-pragma[inline]
 private predicate directCall(
   CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
 ) {
@@ -795,7 +794,6 @@ private predicate directCall(
  * reference to an implicit `self`/`cls` argument. The reference the attribute-read is
  * made on is `self`.
  */
-pragma[inline]
 private predicate callWithinMethodImplicitSelfOrCls(
   CallNode call, Function target, string functionName, Class methodWithinClass, AttrRead attr,
   Node self
@@ -836,7 +834,6 @@ predicate oops(
  * The method call is found by making an attribute read `attr` with the name
  * `functionName` on the return value from the `super` call.
  */
-pragma[inline]
 predicate fromSuper(
   CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
   Node self
