@@ -221,7 +221,6 @@ class CallType extends TCallType {
   }
 }
 
-// TODO: this has TERRIBLE performance though
 predicate resolveMethodCall(ControlFlowNode call, Function target, CallType type, Node self) {
   (
     directCall(call, target, _, _, _, self)
@@ -279,7 +278,6 @@ predicate resolveCall(ControlFlowNode call, Function target, CallType type) {
     resolveClassCall(call, cls) and
     target = invokedFunctionFromClassConstruction(cls)
   )
-
 }
 
 private predicate normalCallArg(CallNode call, Node arg, ArgumentPosition apos) {
@@ -305,7 +303,9 @@ private predicate normalCallArg(CallNode call, Node arg, ArgumentPosition apos) 
 //
 // func(42)
 //
-predicate getCallArg(ControlFlowNode call, Function target, CallType type, Node arg, ArgumentPosition apos) {
+predicate getCallArg(
+  ControlFlowNode call, Function target, CallType type, Node arg, ArgumentPosition apos
+) {
   // normal calls with a real call node
   resolveCall(call, target, type) and
   call instanceof CallNode and
@@ -386,7 +386,9 @@ class NewNormalCall extends DataFlowCall, TNormalCall {
 
   NewNormalCall() { this = TNormalCall(call, target, type) }
 
-  override string toString() { result = "[" + type + "->" + target.getQualifiedName() + "]" + call.toString() }
+  override string toString() {
+    result = "[" + type + "->" + target.getQualifiedName() + "]" + call.toString()
+  }
 
   override ControlFlowNode getNode() { result = call }
 
@@ -394,7 +396,9 @@ class NewNormalCall extends DataFlowCall, TNormalCall {
 
   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
 
-  override ArgumentNode getArgument(ArgumentPosition apos) { getCallArg(call, target, type, result, apos) }
+  override ArgumentNode getArgument(ArgumentPosition apos) {
+    getCallArg(call, target, type, result, apos)
+  }
 }
 
 /** Holds if the function has a `staticmethod` decorator. */
@@ -761,6 +765,21 @@ Function findFunctionAccordingToMroKnownStartingClass(Class cls, Class startingC
         startingClass), startingClass, name)
 }
 
+/** Extracted to give good join order */
+pragma[noinline]
+private predicate directCall_join(
+  CallNode call, string functionName, Class cls, AttrRead attr, Node self
+) {
+  (
+    call.getFunction() = classAttrTracker(attr).asCfgNode() and
+    attr.accesses(classTracker(cls), functionName)
+    or
+    call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
+    attr.accesses(classInstanceTracker(cls), functionName)
+  ) and
+  attr.accesses(self, functionName)
+}
+
 /**
  * Holds if `call` is a call to a method `target` on an instance or class, where the
  * instance or class is not derived from an implicit `self`/`cls` argument to a method
@@ -770,18 +789,25 @@ Function findFunctionAccordingToMroKnownStartingClass(Class cls, Class startingC
  * reference to the class `cls`, or to an instance of the class `cls`. The reference the
  * attribute-read is made on is `self`.
  */
+pragma[noinline]
 private predicate directCall(
   CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
 ) {
-  // method calls on reference of class, or direct instance of class
   target = findFunctionAccordingToMroKnownStartingClass(cls, cls, functionName) and
-  target.getName() = functionName and
+  directCall_join(call, functionName, cls, attr, self)
+}
+
+/** Extracted to give good join order */
+pragma[noinline]
+private predicate callWithinMethodImplicitSelfOrCls_join(
+  CallNode call, string functionName, Class methodWithinClass, AttrRead attr, Node self
+) {
   (
-    call.getFunction() = classAttrTracker(attr).asCfgNode() and
-    attr.accesses(classTracker(cls), functionName)
+    call.getFunction() = clsAttrTracker(attr).asCfgNode() and
+    attr.accesses(clsTracker(methodWithinClass), functionName)
     or
-    call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
-    attr.accesses(classInstanceTracker(cls), functionName)
+    call.getFunction() = selfAttrTracker(attr).asCfgNode() and
+    attr.accesses(selfTracker(methodWithinClass), functionName)
   ) and
   attr.accesses(self, functionName)
 }
@@ -794,21 +820,31 @@ private predicate directCall(
  * reference to an implicit `self`/`cls` argument. The reference the attribute-read is
  * made on is `self`.
  */
+pragma[noinline]
 private predicate callWithinMethodImplicitSelfOrCls(
   CallNode call, Function target, string functionName, Class methodWithinClass, AttrRead attr,
   Node self
 ) {
-  // method call on self/cls reference from within a method
   target = findFunctionAccordingToMro(getADirectSubclass*(methodWithinClass), functionName) and
-  target.getName() = functionName and
+  callWithinMethodImplicitSelfOrCls_join(call, functionName, methodWithinClass, attr, self)
+}
+
+/** Extracted to give good join order */
+pragma[noinline]
+private predicate fromSuper_join(
+  CallNode call, string functionName, Class classUsedInSuper, AttrRead attr, Node self
+) {
+  call.getFunction() = superCallAttrTracker(attr).asCfgNode() and
   (
-    call.getFunction() = clsAttrTracker(attr).asCfgNode() and
-    attr.accesses(clsTracker(methodWithinClass), functionName)
+    exists(Function func |
+      attr.accesses(superCallNoArgumentTracker(func), functionName) and
+      // TODO: Handling of nested scopes, and nested classes
+      func.getEnclosingScope() = classUsedInSuper and
+      self.(ParameterNode).getParameter() = func.getArg(0)
+    )
     or
-    call.getFunction() = selfAttrTracker(attr).asCfgNode() and
-    attr.accesses(selfTracker(methodWithinClass), functionName)
-  ) and
-  attr.accesses(self, functionName)
+    attr.accesses(superCallTwoArgumentTracker(classUsedInSuper, self), functionName)
+  )
 }
 
 /**
@@ -826,24 +862,13 @@ private predicate callWithinMethodImplicitSelfOrCls(
  * The method call is found by making an attribute read `attr` with the name
  * `functionName` on the return value from the `super` call.
  */
+pragma[noinline]
 predicate fromSuper(
   CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
   Node self
 ) {
-  // method call on self/cls reference from within a method
-  target.getName() = functionName and
-  call.getFunction() = superCallAttrTracker(attr).asCfgNode() and
-  (
-    exists(Function func |
-      attr.accesses(superCallNoArgumentTracker(func), functionName) and
-      // TODO: Handling of nested scopes, and nested classes
-      func.getEnclosingScope() = classUsedInSuper and
-      self.(ParameterNode).getParameter() = func.getArg(0)
-    )
-    or
-    attr.accesses(superCallTwoArgumentTracker(classUsedInSuper, self), functionName)
-  ) and
-  target = findFunctionAccordingToMro(getNextClassInMro(classUsedInSuper), functionName)
+  target = findFunctionAccordingToMro(getNextClassInMro(classUsedInSuper), functionName) and
+  fromSuper_join(call, functionName, classUsedInSuper, attr, self)
 }
 
 // /**
