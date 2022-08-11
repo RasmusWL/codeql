@@ -1,10 +1,24 @@
 failures
+| code/through_content.py:6:9:6:22 | Comment # $ pt=my_func | Missing result:pt=my_func |
 debug_callableNotUnique
 | code/class_properties.py:7:5:7:18 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 | code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 | code/class_properties.py:17:5:17:18 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 pointsTo_found_typeTracker_notFound
+| code/class_attr_assign.py:10:9:10:27 | ControlFlowNode for Attribute() | my_func |
+| code/class_attr_assign.py:11:9:11:25 | ControlFlowNode for Attribute() | my_func |
+| code/class_attr_assign.py:26:9:26:25 | ControlFlowNode for Attribute() | DummyObject.method |
 | code/class_super.py:50:1:50:6 | ControlFlowNode for Attribute() | outside_def |
+| code/conditional_in_argument.py:18:5:18:11 | ControlFlowNode for Attribute() | X.foo |
+| code/func_defined_outside_class.py:21:1:21:11 | ControlFlowNode for Attribute() | A.foo |
+| code/func_defined_outside_class.py:22:1:22:15 | ControlFlowNode for Attribute() | outside |
+| code/func_defined_outside_class.py:24:1:24:14 | ControlFlowNode for Attribute() | outside_sm |
+| code/func_defined_outside_class.py:25:1:25:14 | ControlFlowNode for Attribute() | outside_cm |
+| code/func_defined_outside_class.py:38:11:38:21 | ControlFlowNode for _gen() | B._gen |
+| code/func_defined_outside_class.py:39:11:39:21 | ControlFlowNode for _gen() | B._gen |
+| code/func_defined_outside_class.py:42:1:42:7 | ControlFlowNode for Attribute() | B._gen.func |
+| code/func_defined_outside_class.py:43:1:43:7 | ControlFlowNode for Attribute() | B._gen.func |
+| code/type_tracking_limitation.py:8:1:8:3 | ControlFlowNode for x() | my_func |
 pointsTo_notFound_typeTracker_found
 | code/callable_as_argument.py:29:5:29:12 | ControlFlowNode for Attribute() | test_class.InsideTestFunc.sm |
 | code/class_more_mro2.py:18:9:18:21 | ControlFlowNode for Attribute() | A.foo |

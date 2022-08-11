@@ -3,4 +3,4 @@ def my_func():
 
 funcs = [my_func]
 for f in funcs:
-    f()
+    f() # $ MISSING: tt=my_func
