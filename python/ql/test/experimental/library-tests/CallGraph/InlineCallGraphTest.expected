@@ -1,5 +1,12 @@
 failures
-| code/through_content.py:6:9:6:22 | Comment # $ pt=my_func | Missing result:pt=my_func |
+| code/relative_import.py:3:5:3:9 | ControlFlowNode for foo() | Unexpected result: pt=code/simple.py:foo |
+| code/relative_import.py:3:5:3:9 | ControlFlowNode for foo() | Unexpected result: tt=code/simple.py:foo |
+| code/relative_import.py:3:11:3:38 | Comment # $ pt,tt=code/simple.py:foo | Missing result:pt=code/simple.py:foo |
+| code/relative_import.py:3:11:3:38 | Comment # $ pt,tt=code/simple.py:foo | Missing result:tt=code/simple.py:foo |
+| code/relative_import.py:7:5:7:9 | ControlFlowNode for foo() | Unexpected result: pt=code/simple.py:foo |
+| code/relative_import.py:7:5:7:9 | ControlFlowNode for foo() | Unexpected result: tt=code/simple.py:foo |
+| code/relative_import.py:7:11:7:38 | Comment # $ pt,tt=code/simple.py:foo | Missing result:pt=code/simple.py:foo |
+| code/relative_import.py:7:11:7:38 | Comment # $ pt,tt=code/simple.py:foo | Missing result:tt=code/simple.py:foo |
 debug_callableNotUnique
 | code/class_properties.py:7:5:7:18 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
 | code/class_properties.py:12:5:12:25 | Function arg | Qualified function name 'Prop.arg' is not unique within its file. Please fix. |
