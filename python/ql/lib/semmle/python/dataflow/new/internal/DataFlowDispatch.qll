@@ -192,11 +192,31 @@ class DataFlowModuleScope extends DataFlowCallable, TModule {
 }
 
 newtype TCallType =
+  /** A call to a function that is not part of a class. */
   TypePlainFunctionCall() or
+  /**
+   * A call to an "normal" method on a class instance.
+   * Does not include staticmethods or classmethods.
+   */
   TypeNormalMethodCall() or
+  /** A call to a staticmethod. */
   TypeStaticMethodCall() or
+  /** A call to a classmethod. */
   TypeClassMethodCall() or
+  /**
+   * A call to method on a class, not going through an instance method, such as
+   *
+   * ```py
+   * class Foo:
+   *     def method(self, arg):
+   *         pass
+   *
+   * foo = Foo()
+   * Foo.method(foo, 42)
+   * ```
+   */
   TypeMethodAsPlainFunctionCall() or
+  /** A call to a class. */
   TypeClassCall()
 
 class CallType extends TCallType {
@@ -436,34 +456,6 @@ private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
  */
 Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).flowsTo(result) }
 
-// /** A normal call, with an underlying `CallNode`. */
-// abstract class NormalCall extends DataFlowCall, TNormalCall {
-//   CallNode call;
-//   NormalCall() { this = TNormalCall(call) }
-//   override string toString() { result = call.toString() }
-//   override ControlFlowNode getNode() { result = call }
-//   override DataFlowCallable getEnclosingCallable() { result.getScope() = call.getScope() }
-//   override ArgumentNode getArgument(ArgumentPosition apos) {
-//     exists(int index |
-//       apos.isPositional(index) and
-//       result.asCfgNode() = call.getArg(index)
-//     )
-//     or
-//     exists(string name |
-//       apos.isKeyword(name) and
-//       result.asCfgNode() = call.getArgByName(name)
-//     )
-//   }
-// }
-// class PlainFunctionCall extends NormalCall {
-//   Function target;
-//   PlainFunctionCall() {
-//     call.getFunction() = functionTracker(target).asCfgNode() and
-//     not exists(Class cls | cls.getAMethod() = target)
-//   }
-//   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-//   // override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
-// }
 /** Gets a call to `type`. */
 private CallCfgNode getTypeCall() {
   exists(NameNode id | id.getId() = "type" and id.isGlobal() |
@@ -871,102 +863,6 @@ predicate fromSuper(
   fromSuper_join(call, functionName, classUsedInSuper, attr, self)
 }
 
-// /**
-//  * A call to a method on a class.
-//  *
-//  * These are separated further to handle different argument passing, but share a core
-//  * logic of attribute lookup going through inheritance.
-//  */
-// abstract class MethodCall extends NormalCall {
-//   Function target;
-//   Node self;
-//   MethodCall() {
-//     directCall(call, target, _, _, _, self)
-//     or
-//     callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
-//     or
-//     fromSuper(call, target, _, _, _, self)
-//   }
-//   override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-// }
-// /**
-//  * A call to an "normal" method on a class instance.
-//  * Does not include staticmethods or classmethods.
-//  *
-//  * See 'instance methods' in https://docs.python.org/3/reference/datamodel.html
-//  */
-// class NormalMethodCall extends MethodCall {
-//   NormalMethodCall() {
-//     (
-//       self = classInstanceTracker(_)
-//       or
-//       self = selfTracker(_)
-//     ) and
-//     not hasStaticmethodDecorator(target) and
-//     not hasClassmethodDecorator(target)
-//   }
-//   override ArgumentNode getArgument(ArgumentPosition apos) {
-//     result = super.getArgument(apos)
-//     or
-//     apos.isSelf() and
-//     result = self
-//   }
-//   // override DataFlowCallable getCallable() { result.(DataFlowFunction).getScope() = target }
-//   // override DataFlowCallable getCallable() { result = super.getCallable() }
-// }
-// /**
-//  * A call to method on a class, not going through an instance method, such as
-//  *
-//  * ```py
-//  * class Foo:
-//  *     def method(self, arg):
-//  *         pass
-//  *
-//  * foo = Foo()
-//  * Foo.method(foo, 42)
-//  * ```
-//  */
-// class MethodAsPlainFunctionCall extends MethodCall {
-//   MethodAsPlainFunctionCall() {
-//     self = classTracker(_) and
-//     not hasStaticmethodDecorator(target) and
-//     not hasClassmethodDecorator(target)
-//   }
-//   override ArgumentNode getArgument(ArgumentPosition apos) {
-//     apos.isSelf() and result.asCfgNode() = call.getArg(0)
-//     or
-//     exists(int index |
-//       apos.isPositional(index) and
-//       result.asCfgNode() = call.getArg(index + 1)
-//     )
-//     or
-//     exists(string name |
-//       apos.isKeyword(name) and
-//       result.asCfgNode() = call.getArgByName(name)
-//     )
-//   }
-// }
-// /** A call to a classmethod. */
-// class ClassmethodCall extends MethodCall {
-//   ClassmethodCall() { hasClassmethodDecorator(target) }
-//   override ArgumentNode getArgument(ArgumentPosition apos) {
-//     result = super.getArgument(apos)
-//     or
-//     // only set `self` argument when it's a class, and not when it's a class instance.
-//     apos.isSelf() and
-//     result = self and
-//     (
-//       self = classTracker(_)
-//       or
-//       self = clsTracker(_)
-//     )
-//   }
-// }
-// /** A call to a staticmethod. */
-// class StaticmethodCall extends MethodCall {
-//   StaticmethodCall() { hasStaticmethodDecorator(target) }
-//   override ArgumentNode getArgument(ArgumentPosition apos) { result = super.getArgument(apos) }
-// }
 Function invokedFunctionFromClassConstruction(Class cls) {
   result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__new__")
   or
@@ -977,56 +873,7 @@ Function invokedFunctionFromClassConstruction(Class cls) {
   result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__init__")
 }
 
-// /** A call to a class. */
-// class ClassCall extends NormalCall {
-//   Class cls;
-//   ClassCall() { call.getFunction() = classTracker(cls).asCfgNode() }
-//   override DataFlowCallable getCallable() {
-//     result.(DataFlowFunction).getScope() = invokedFunctionFromClassConstruction(cls)
-//   }
-//   Class getClass() { result = cls }
-//   override ArgumentNode getArgument(ArgumentPosition apos) {
-//     apos.isSelf() and
-//     result = TSyntheticPreUpdateNode(call)
-//     or
-//     result = super.getArgument(apos)
-//   }
-// }
-predicate wat(DataFlowCall call, ArgumentPosition apos, Node arg) { arg = call.getArgument(apos) }
-
-// Non-monotonic recursion:
-// characteristic predicate of DataFlowDispatch::ClassCall
-// --> DataFlowDispatch::classTracker
-// --> DataFlowDispatch::classTracker
-// --> LocalSources::LocalSourceNode::track
-// --> TypeTracker::TypeTracker::step
-// --> TypeTracker::StepSummary::step
-// --> TypeTracker::Cached::stepCall
-// --> TypeTracker::smallstepCall
-// --> TypeTrackerSpecific::callStep
-// -!->(via dispatch of DataFlowDispatch::DataFlowCall::getArgument) DataFlowDispatch::ClassCall
-// --> characteristic predicate of DataFlowDispatch::ClassCall
-//
-// in human words:
-// Wheter a call is a class call, depends on whether we can track a class reference
-// using type-tracking. Type-tracking uses `getArgument` member-predicate to perform
-// this type-tracking. SO, whether a call is a ClassCall depends on `getArgument`
-// (through type tracking), and the results for _this_, depends on whether the call is a
-// ClassCall... in conclusion, whether a call is a classcall depends on whether it's a class call :|
-//
-// The compiler thinks it _could_ be the case that getArgument had no results
-// 1) if a call was part of ClassCall, that would be because we could track a class
-//    value to the function of that call, and the step that might have allowed this
-//    could have been a arg->param call step. However, now that this call is part of
-//    ClassCall, the ClassCall.getArgument might be the most specific implementation,
-//    and if that has no results we suddenly don't have a arg->param call step any
-//    longer...
-//
-// or is it like this? I think it's a bit of a bollocks argument, since
-// ClassCall.getArgument is going to happen in addition to the other most-specific
-// implementations... it WONT remove previously valid results...
-//
-// ACTUALLY, if something could be BOTH a plain function call, and a
+// TODO: FIXME: ACTUALLY, if something could be BOTH a plain function call, and a
 // method-as-plain-function-call, since plain function call doesn't override
 // getArgument, the most-specific implementation will be the
 // method-as-plain-function-call, and it won't be possible to treat arg0 as arg0 :O will
