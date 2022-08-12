@@ -29,8 +29,7 @@ string getPossibleContentName() {
 
 /** Holds if `nodeFrom` steps to `nodeTo` by being passed as a parameter in a call. */
 predicate callStep(DataFlowPublic::ArgumentNode nodeFrom, DataFlowPublic::ParameterNode nodeTo) {
-  // none()
-  // TODO: this gives non-monotonic recursion
+  // TODO: Fix performance problem with pandas
   exists(
     DataFlowPrivate::DataFlowCall call, DataFlowPrivate::DataFlowCallable callable,
     DataFlowPrivate::ArgumentPosition apos, DataFlowPrivate::ParameterPosition ppos
