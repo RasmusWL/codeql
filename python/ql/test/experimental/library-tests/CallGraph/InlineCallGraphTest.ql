@@ -4,6 +4,8 @@ private import semmle.python.dataflow.new.internal.DataFlowDispatch as TT
 
 /** A call graph edge resolved based on Type Trackers */
 predicate pointsToCallEdge(CallNode call, Function callable) {
+  exists(call.getLocation().getFile().getRelativePath()) and
+  exists(callable.getLocation().getFile().getRelativePath()) and
   exists(PythonFunctionValue funcValue |
     funcValue.getScope() = callable and
     call = funcValue.getACall()
@@ -12,11 +14,15 @@ predicate pointsToCallEdge(CallNode call, Function callable) {
 
 /** A call graph edge resolved based on Type Trackers */
 predicate typeTrackerCallEdge(CallNode call, Function callable) {
+  exists(call.getLocation().getFile().getRelativePath()) and
+  exists(callable.getLocation().getFile().getRelativePath()) and
   TT::TFunction(callable) = TT::viableCallable(TT::TNormalCall(call, _, _))
 }
 
 /** Holds if the call edge is from a class call. */
 predicate typeTrackerClassCall(CallNode call, Function callable) {
+  exists(call.getLocation().getFile().getRelativePath()) and
+  exists(callable.getLocation().getFile().getRelativePath()) and
   exists(TT::NewNormalCall cc |
     cc = TT::TNormalCall(call, _, any(TT::TCallType t | t instanceof TT::TypeClassCall)) and
     TT::TFunction(callable) = TT::viableCallable(cc)
@@ -41,7 +47,18 @@ class CallGraphTest extends InlineExpectationsTest {
       element = call.toString() and
       if call.getLocation().getFile() = target.getLocation().getFile()
       then value = betterQualName(target)
-      else value = target.getLocation().getFile() + ":" + betterQualName(target)
+      else
+        exists(string fixedRelativePath |
+          fixedRelativePath =
+            target
+                .getLocation()
+                .getFile()
+                .getRelativePath()
+                .regexpCapture(".*/CallGraph[^/]*/(.*)", 1)
+        |
+          // the value needs to be enclosed in quotes to allow special characters
+          value = "\"" + fixedRelativePath + ":" + betterQualName(target) + "\""
+        )
     )
   }
 }
@@ -59,6 +76,7 @@ string betterQualName(Function func) {
 }
 
 query predicate debug_callableNotUnique(Function callable, string message) {
+  exists(callable.getLocation().getFile().getRelativePath()) and
   exists(Function f |
     f != callable and
     f.getQualifiedName() = callable.getQualifiedName() and

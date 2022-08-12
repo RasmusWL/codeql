@@ -22,12 +22,24 @@ class TaggedJSONSerializer:
 def swappable_dependency(value):
     ...
 
-# django/db/migrations/migration/__init__.py
+# django/db/migrations/__init__.py
 from .migration import Migration, swappable_dependency  # NOQA
+from .operations import *  # NOQA
+
+# django/db/__init__.py
+# no mention of migrations at all
 
 # django/contrib/admin/migrations/0001_initial.py
 from django.db import migrations
 migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+
+# ===
+# problem is that module_export only has ONE result for `name=swappable_dependency`,
+# which with m = Module django.db.migrations.migration to the FunctionExpr defn.
+#
+# but nothing for the `django/db/migrations/__init__.py` file.
+#
+# but it's kinda hard to reproduce :|
 
 # ---------------- #
 # second test case #
@@ -39,8 +51,12 @@ class ArrayField(CheckFieldDefaultMixin, Field):
 
 # django/contrib/postgres/fields/__init__.py
 from .array import *  # NOQA
+from .citext import *  # NOQA
+from .hstore import *  # NOQA
+from .jsonb import *  # NOQA
+from .ranges import *  # NOQA
 
-# usage file file
+# usage file
 import django.contrib.postgres.fields
 django.contrib.postgres.fields.ArrayField(...)
 
