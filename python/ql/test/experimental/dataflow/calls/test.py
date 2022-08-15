@@ -25,41 +25,41 @@ class MyClass(object):
     def __getitem__(self, key):
         pass
 
-func(0) # $ call=func(..) arg[position 0]=0 qlclass=PlainFunctionCall
+func(0) # $ call=func(..) arg[position 0]=0 callType=CallTypePlainFunction
 
-x = MyClass(1)
+x = MyClass(1) # $ call=MyClass(..) arg[self]=[pre]MyClass(..) arg[position 0]=1 callType=CallTypeClass
 
-x.my_method(2) # $ call=x.my_method(..) arg[position 0]=2 arg[self]=x qlclass=NormalMethodCall
+x.my_method(2) # $ call=x.my_method(..) arg[self]=x arg[position 0]=2 callType=CallTypeNormalMethod
 mm = x.my_method
-mm(2) # $ call=mm(..) arg[position 0]=2 arg[self]=x qlclass=NormalMethodCall
-MyClass.my_method(x, 2) # $ call=MyClass.my_method(..) arg[position 0]=2 arg[self]=x qlclass=MethodAsPlainFunctionCall
+mm(2) # $ call=mm(..) arg[self]=x arg[position 0]=2  callType=CallTypeNormalMethod
+MyClass.my_method(x, 2) # $ call=MyClass.my_method(..) arg[position 0]=2 arg[self]=x callType=CallTypeMethodAsPlainFunction
 
-x.staticmethod(3) # $ call=x.staticmethod(..) arg[position 0]=3  qlclass=StaticmethodCall
-MyClass.staticmethod(3) # $ call=MyClass.staticmethod(..) arg[position 0]=3 qlclass=StaticmethodCall
+x.staticmethod(3) # $ call=x.staticmethod(..) arg[position 0]=3  callType=CallTypeStaticMethod
+MyClass.staticmethod(3) # $ call=MyClass.staticmethod(..) arg[position 0]=3 callType=CallTypeStaticMethod
 
-x.classmethod(4) # $ call=x.classmethod(..) arg[position 0]=4 qlclass=ClassmethodCall
-MyClass.classmethod(4) # $ call=MyClass.classmethod(..) arg[position 0]=4 arg[self]=MyClass qlclass=ClassmethodCall
+x.classmethod(4) # $ call=x.classmethod(..) arg[position 0]=4 callType=CallTypeClassMethod SPURIOUS: arg[self]=x
+MyClass.classmethod(4) # $ call=MyClass.classmethod(..) arg[position 0]=4 arg[self]=MyClass callType=CallTypeClassMethod
 
-x[5] # $ MISSING: call=x[5] qlclass=SpecialCall arg[self]=x arg[position 0]=5
+x[5] # $ MISSING: call=x[5] arg[self]=x arg[position 0]=5
 
 
 class Subclass(MyClass):
     pass
 
-y = Subclass(1)
+y = Subclass(1) # $ call=Subclass(..) arg[self]=[pre]Subclass(..) arg[position 0]=1 callType=CallTypeClass
 
-y.my_method(2) # $ call=y.my_method(..) arg[position 0]=2 arg[self]=y qlclass=NormalMethodCall
+y.my_method(2) # $ call=y.my_method(..) arg[self]=y arg[position 0]=2 callType=CallTypeNormalMethod
 mm = y.my_method
-mm(2) # $ call=mm(..) arg[position 0]=2 arg[self]=y qlclass=NormalMethodCall
-Subclass.my_method(y, 2) # $ call=Subclass.my_method(..) arg[position 0]=2 arg[self]=y qlclass=MethodAsPlainFunctionCall
+mm(2) # $ call=mm(..) arg[self]=y arg[position 0]=2 callType=CallTypeNormalMethod
+Subclass.my_method(y, 2) # $ call=Subclass.my_method(..) arg[self]=y arg[position 0]=2 callType=CallTypeMethodAsPlainFunction
 
-y.staticmethod(3) # $ call=y.staticmethod(..) arg[position 0]=3  qlclass=StaticmethodCall
-Subclass.staticmethod(3) # $ call=Subclass.staticmethod(..) arg[position 0]=3 qlclass=StaticmethodCall
+y.staticmethod(3) # $ call=y.staticmethod(..) arg[position 0]=3  callType=CallTypeStaticMethod
+Subclass.staticmethod(3) # $ call=Subclass.staticmethod(..) arg[position 0]=3 callType=CallTypeStaticMethod
 
-y.classmethod(4) # $ call=y.classmethod(..) arg[position 0]=4 qlclass=ClassmethodCall
-Subclass.classmethod(4) # $ call=Subclass.classmethod(..) arg[position 0]=4 arg[self]=Subclass qlclass=ClassmethodCall
+y.classmethod(4) # $ call=y.classmethod(..) arg[position 0]=4 callType=CallTypeClassMethod SPURIOUS: arg[self]=y
+Subclass.classmethod(4) # $ call=Subclass.classmethod(..) arg[self]=Subclass arg[position 0]=4 callType=CallTypeClassMethod
 
-y[5] # $ MISSING: MISSING: call=y[5] qlclass=SpecialCall arg[self]=y arg[position 0]=5
+y[5] # $ MISSING: call=y[5] arg[self]=y arg[position 0]=5
 
 
 try:

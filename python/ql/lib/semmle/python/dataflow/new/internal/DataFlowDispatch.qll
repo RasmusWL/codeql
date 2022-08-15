@@ -419,6 +419,9 @@ class NormalCall extends DataFlowCall, TNormalCall {
   override ArgumentNode getArgument(ArgumentPosition apos) {
     getCallArg(call, target, type, result, apos)
   }
+
+  /** Gets the `CallType` of this call. */
+  CallType getCallType() { result = type }
 }
 
 /** Holds if the function has a `staticmethod` decorator. */

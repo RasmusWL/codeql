@@ -8,7 +8,7 @@ class DataFlowCallTest extends InlineExpectationsTest {
   DataFlowCallTest() { this = "DataFlowCallTest" }
 
   override string getARelevantTag() {
-    result in ["call", "qlclass"]
+    result in ["call", "callType"]
     or
     result = "arg[" + any(DataFlowDispatch::ArgumentPosition pos).toString() + "]"
   }
@@ -22,8 +22,8 @@ class DataFlowCallTest extends InlineExpectationsTest {
       value = prettyExpr(call.getNode().getNode()) and
       tag = "call"
       or
-      value = call.getAQlClass() and
-      tag = "qlclass"
+      value = call.(DataFlowDispatch::NormalCall).getCallType().toString() and
+      tag = "callType"
       or
       exists(DataFlowDispatch::ArgumentPosition pos, DataFlow::Node arg |
         arg = call.getArgument(pos)
