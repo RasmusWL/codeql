@@ -64,8 +64,8 @@ if cond:
 else:
     func = A.foo # `44` is passed as self
 
-# What we're testing for is whether both `a` and `44` is passed as self to A.foo
-# since we have a normal method call, and a method-called-through-plain-function-call
+# What we're testing for is whether a single call ends up having both `a` and `44` is
+# passed as self to `A.foo`, which is wrong.
 
 func(44)
 

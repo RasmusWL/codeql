@@ -413,7 +413,11 @@ class NormalCall extends DataFlowCall, TNormalCall {
   NormalCall() { this = TNormalCall(call, target, type) }
 
   override string toString() {
-    result = "[" + type + "->" + target.getQualifiedName() + "]" + call.toString()
+    // note: if we used toString directly on the CallNode we would get
+    //    `ControlFlowNode for func()`
+    // but the `ControlFlowNode` is just clutter, so we go directly to the AST node
+    // instead.
+    result = call.getNode().toString()
   }
 
   override ControlFlowNode getNode() { result = call }
