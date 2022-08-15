@@ -262,8 +262,8 @@ def test_potential_crosstalk_different_name(cond=True):
     func(SOURCE)
 
     SINK(objx.x) # $ flow="SOURCE, l:-2 -> objx.x"
-    SINK_F(objx.y) # $ SPURIOUS: flow="SOURCE, l:-3 -> objx.y"
-    SINK_F(objy.x) # $ SPURIOUS: flow="SOURCE, l:-4 -> objy.x"
+    SINK_F(objx.y)
+    SINK_F(objy.x)
     SINK_F(objy.y) # $ flow="SOURCE, l:-5 -> objy.y"
 
 
@@ -285,8 +285,8 @@ def test_potential_crosstalk_same_name(cond=True):
     func(SOURCE)
 
     SINK(objx.x) # $ flow="SOURCE, l:-2 -> objx.x"
-    SINK_F(objx.y) # $ SPURIOUS: flow="SOURCE, l:-3 -> objx.y"
-    SINK_F(objy.x) # $ SPURIOUS: flow="SOURCE, l:-4 -> objy.x"
+    SINK_F(objx.y)
+    SINK_F(objy.x)
     SINK_F(objy.y) # $ flow="SOURCE, l:-5 -> objy.y"
 
 
