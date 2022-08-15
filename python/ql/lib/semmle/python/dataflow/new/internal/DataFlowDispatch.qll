@@ -399,12 +399,12 @@ abstract class DataFlowCall extends TDataFlowCall {
   abstract ArgumentNode getArgument(ArgumentPosition apos);
 }
 
-class NewNormalCall extends DataFlowCall, TNormalCall {
+class NormalCall extends DataFlowCall, TNormalCall {
   CallNode call;
   Function target;
   CallType type;
 
-  NewNormalCall() { this = TNormalCall(call, target, type) }
+  NormalCall() { this = TNormalCall(call, target, type) }
 
   override string toString() {
     result = "[" + type + "->" + target.getQualifiedName() + "]" + call.toString()
