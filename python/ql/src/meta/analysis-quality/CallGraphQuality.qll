@@ -112,7 +112,7 @@ module TypeTrackingBasedCallGraph {
     Target getTarget() {
       exists(TT::DataFlowCall call, TT::CallType ct, Function targetFunc |
         call = TT::TNormalCall(this, targetFunc, ct) and
-        not ct instanceof TT::TypeClassCall and
+        not ct instanceof TT::CallTypeClass and
         targetFunc = result.(TargetFunction).getFunction()
       )
       or

@@ -193,16 +193,16 @@ class DataFlowModuleScope extends DataFlowCallable, TModule {
 
 newtype TCallType =
   /** A call to a function that is not part of a class. */
-  TypePlainFunctionCall() or
+  CallTypePlainFunction() or
   /**
    * A call to an "normal" method on a class instance.
    * Does not include staticmethods or classmethods.
    */
-  TypeNormalMethodCall() or
+  CallTypeNormalMethod() or
   /** A call to a staticmethod. */
-  TypeStaticMethodCall() or
+  CallTypeStaticMethod() or
   /** A call to a classmethod. */
-  TypeClassMethodCall() or
+  CallTypeClassMethod() or
   /**
    * A call to method on a class, not going through an instance method, such as
    *
@@ -215,29 +215,29 @@ newtype TCallType =
    * Foo.method(foo, 42)
    * ```
    */
-  TypeMethodAsPlainFunctionCall() or
+  CallTypeMethodAsPlainFunction() or
   /** A call to a class. */
-  TypeClassCall()
+  CallTypeClass()
 
 class CallType extends TCallType {
   string toString() {
-    this instanceof TypePlainFunctionCall and
-    result = "TypePlainFunctionCall"
+    this instanceof CallTypePlainFunction and
+    result = "CallTypePlainFunction"
     or
-    this instanceof TypeNormalMethodCall and
-    result = "TypeNormalMethodCall"
+    this instanceof CallTypeNormalMethod and
+    result = "CallTypeNormalMethod"
     or
-    this instanceof TypeStaticMethodCall and
-    result = "TypeStaticMethodCall"
+    this instanceof CallTypeStaticMethod and
+    result = "CallTypeStaticMethod"
     or
-    this instanceof TypeClassMethodCall and
-    result = "TypeClassMethodCall"
+    this instanceof CallTypeClassMethod and
+    result = "CallTypeClassMethod"
     or
-    this instanceof TypeMethodAsPlainFunctionCall and
-    result = "TypeMethodAsPlainFunctionCall"
+    this instanceof CallTypeMethodAsPlainFunction and
+    result = "CallTypeMethodAsPlainFunction"
     or
-    this instanceof TypeClassCall and
-    result = "TypeClassCall"
+    this instanceof CallTypeClass and
+    result = "CallTypeClass"
   }
 }
 
@@ -251,7 +251,7 @@ predicate resolveMethodCall(ControlFlowNode call, Function target, CallType type
   ) and
   (
     // normal method call
-    type instanceof TypeNormalMethodCall and
+    type instanceof CallTypeNormalMethod and
     (
       self = classInstanceTracker(_)
       or
@@ -261,17 +261,17 @@ predicate resolveMethodCall(ControlFlowNode call, Function target, CallType type
     not hasClassmethodDecorator(target)
     or
     // method as plain function call
-    type instanceof TypeMethodAsPlainFunctionCall and
+    type instanceof CallTypeMethodAsPlainFunction and
     self = classTracker(_) and
     not hasStaticmethodDecorator(target) and
     not hasClassmethodDecorator(target)
     or
     // staticmethod call
-    type instanceof TypeStaticMethodCall and
+    type instanceof CallTypeStaticMethod and
     hasStaticmethodDecorator(target)
     or
     // classmethod call
-    type instanceof TypeClassMethodCall and
+    type instanceof CallTypeClassMethod and
     hasClassmethodDecorator(target)
   )
 }
@@ -287,13 +287,13 @@ predicate resolveClassCall(CallNode call, Class cls) {
 }
 
 predicate resolveCall(ControlFlowNode call, Function target, CallType type) {
-  type instanceof TypePlainFunctionCall and
+  type instanceof CallTypePlainFunction and
   call.(CallNode).getFunction() = functionTracker(target).asCfgNode() and
   not exists(Class cls | cls.getAMethod() = target)
   or
   resolveMethodCall(call, target, type, _)
   or
-  type instanceof TypeClassCall and
+  type instanceof CallTypeClass and
   exists(Class cls |
     resolveClassCall(call, cls) and
     target = invokedFunctionFromClassConstruction(cls)
@@ -330,19 +330,19 @@ predicate getCallArg(
   resolveCall(call, target, type) and
   call instanceof CallNode and
   (
-    type instanceof TypePlainFunctionCall and
+    type instanceof CallTypePlainFunction and
     normalCallArg(call, arg, apos)
     or
     // self argument for normal method calls/cls argument for classmethod calls
-    (type instanceof TypeNormalMethodCall or type instanceof TypeClassMethodCall) and
+    (type instanceof CallTypeNormalMethod or type instanceof CallTypeClassMethod) and
     apos.isSelf() and
     resolveMethodCall(call, target, type, arg)
     or
     // normal arguments for method calls
     (
-      type instanceof TypeNormalMethodCall or
-      type instanceof TypeStaticMethodCall or
-      type instanceof TypeClassMethodCall
+      type instanceof CallTypeNormalMethod or
+      type instanceof CallTypeStaticMethod or
+      type instanceof CallTypeClassMethod
     ) and
     normalCallArg(call, arg, apos)
     or
@@ -351,7 +351,7 @@ predicate getCallArg(
     // argument index 0 of call has position self (and MUST be given as positional
     // argument in call). This also means that call-arguments are shifted by 1, such
     // that argument index 1 of call has argument position 0
-    type instanceof TypeMethodAsPlainFunctionCall and
+    type instanceof CallTypeMethodAsPlainFunction and
     (
       apos.isSelf() and arg.asCfgNode() = call.(CallNode).getArg(0)
       or
@@ -365,7 +365,7 @@ predicate getCallArg(
     )
     or
     // class call
-    type instanceof TypeClassCall and
+    type instanceof CallTypeClass and
     (
       apos.isSelf() and
       arg = TSyntheticPreUpdateNode(call)
