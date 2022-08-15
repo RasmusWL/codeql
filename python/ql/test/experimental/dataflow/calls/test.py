@@ -37,7 +37,7 @@ MyClass.my_method(x, 2) # $ call=MyClass.my_method(..) arg[position 0]=2 arg[sel
 x.staticmethod(3) # $ call=x.staticmethod(..) arg[position 0]=3  callType=CallTypeStaticMethod
 MyClass.staticmethod(3) # $ call=MyClass.staticmethod(..) arg[position 0]=3 callType=CallTypeStaticMethod
 
-x.classmethod(4) # $ call=x.classmethod(..) arg[position 0]=4 callType=CallTypeClassMethod SPURIOUS: arg[self]=x
+x.classmethod(4) # $ call=x.classmethod(..) arg[position 0]=4 callType=CallTypeClassMethod
 MyClass.classmethod(4) # $ call=MyClass.classmethod(..) arg[position 0]=4 arg[self]=MyClass callType=CallTypeClassMethod
 
 x[5] # $ MISSING: call=x[5] arg[self]=x arg[position 0]=5
@@ -56,7 +56,7 @@ Subclass.my_method(y, 2) # $ call=Subclass.my_method(..) arg[self]=y arg[positio
 y.staticmethod(3) # $ call=y.staticmethod(..) arg[position 0]=3  callType=CallTypeStaticMethod
 Subclass.staticmethod(3) # $ call=Subclass.staticmethod(..) arg[position 0]=3 callType=CallTypeStaticMethod
 
-y.classmethod(4) # $ call=y.classmethod(..) arg[position 0]=4 callType=CallTypeClassMethod SPURIOUS: arg[self]=y
+y.classmethod(4) # $ call=y.classmethod(..) arg[position 0]=4 callType=CallTypeClassMethod
 Subclass.classmethod(4) # $ call=Subclass.classmethod(..) arg[self]=Subclass arg[position 0]=4 callType=CallTypeClassMethod
 
 y[5] # $ MISSING: call=y[5] arg[self]=y arg[position 0]=5

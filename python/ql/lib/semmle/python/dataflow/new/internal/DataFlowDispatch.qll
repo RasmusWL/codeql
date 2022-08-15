@@ -333,10 +333,16 @@ predicate getCallArg(
     type instanceof CallTypePlainFunction and
     normalCallArg(call, arg, apos)
     or
-    // self argument for normal method calls/cls argument for classmethod calls
-    (type instanceof CallTypeNormalMethod or type instanceof CallTypeClassMethod) and
+    // self argument for normal method calls
+    type instanceof CallTypeNormalMethod and
     apos.isSelf() and
     resolveMethodCall(call, target, type, arg)
+    or
+    // cls argument for classmethod calls
+    type instanceof CallTypeClassMethod and
+    apos.isSelf() and
+    resolveMethodCall(call, target, type, arg) and
+    arg = classTracker(_)
     or
     // normal arguments for method calls
     (
