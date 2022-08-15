@@ -55,6 +55,15 @@ newtype TNode =
     node = any(AttrNode a).getObject()
     or
     node = any(SubscriptNode s).getObject()
+    or
+    // self parameter when used implicitly in `super()`
+    exists(Class cls, Function func, ParameterDefinition def |
+      func = cls.getAMethod() and
+      not hasStaticmethodDecorator(func) and
+      // this matches what we do in ParameterNode
+      def.getDefiningNode() = node and
+      def.getParameter() = func.getArg(0)
+    )
   } or
   /** A node representing a global (module-level) variable in a specific module. */
   TModuleVariableNode(Module m, GlobalVariable v) {
