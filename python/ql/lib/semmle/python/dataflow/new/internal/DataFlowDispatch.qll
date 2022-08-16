@@ -626,9 +626,7 @@ private TypeTrackingNode superCallNoArgumentTracker(TypeTracker t, Function func
   exists(CallCfgNode call | result = call |
     call.getFunction() = superTracker() and
     not exists(call.getArg(_)) and
-    // TODO: we actually want the inner-most function that contains the expression,
-    // in case of nested function definitions
-    func.contains(call.asExpr())
+    call.getScope() = func
   )
   or
   exists(TypeTracker t2 | result = superCallNoArgumentTracker(t2, func).track(t2, t))
@@ -851,7 +849,11 @@ private predicate fromSuper_join(
   (
     exists(Function func |
       attr.accesses(superCallNoArgumentTracker(func), functionName) and
-      // TODO: Handling of nested scopes, and nested classes
+      // Requiring enclosing scope of function to be a class is a little too
+      // restrictive, since it is possible to use `super()` in a function defined inside
+      // the method, where the first argument to the nested-function will be used as
+      // implicit self argument. In practice I don't expect this to be a problem, and we
+      // did not support this with points-to either.
       func.getEnclosingScope() = classUsedInSuper and
       self.(ParameterNode).getParameter() = func.getArg(0)
     )

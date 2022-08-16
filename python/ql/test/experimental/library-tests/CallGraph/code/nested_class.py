@@ -60,7 +60,7 @@ class X(Base):
         def inner_func():
             print("inner_func")
             try:
-                super().foo() # $ SPURIOUS: tt=Base.foo
+                super().foo()
             except RuntimeError:
                 print("RuntimeError, as expected")
 
@@ -68,7 +68,7 @@ class X(Base):
 
         def inner_func2(this_works):
             print("inner_func2")
-            super().foo() # $ tt=Base.foo
+            super().foo() # $ MISSING: tt=Base.foo
 
         inner_func2(self) # $ pt,tt=X.meth.inner_func2
 
@@ -77,7 +77,7 @@ class X(Base):
         class Y(Base2):
             def meth(self):
                 print("Y.meth")
-                super().foo() # $ pt,tt=Base2.foo SPURIOUS:tt=Base.foo
+                super().foo() # $ pt,tt=Base2.foo
 
         y = Y()
         y.meth() # $ tt=X.class_def_in_func.Y.meth
