@@ -9,6 +9,10 @@ edges
 | test.py:42:12:42:18 | ControlFlowNode for request | test.py:42:12:42:23 | ControlFlowNode for Attribute |
 | test.py:42:12:42:23 | ControlFlowNode for Attribute | test.py:43:22:43:25 | ControlFlowNode for data |
 | test.py:42:12:42:23 | ControlFlowNode for Attribute | test.py:44:25:44:28 | ControlFlowNode for data |
+| test.py:47:17:47:19 | ControlFlowNode for arg | test.py:50:32:50:34 | ControlFlowNode for arg |
+| test.py:54:12:54:18 | ControlFlowNode for request | test.py:54:12:54:23 | ControlFlowNode for Attribute |
+| test.py:54:12:54:23 | ControlFlowNode for Attribute | test.py:55:17:55:20 | ControlFlowNode for data |
+| test.py:55:17:55:20 | ControlFlowNode for data | test.py:47:17:47:19 | ControlFlowNode for arg |
 nodes
 | test.py:13:16:13:22 | ControlFlowNode for request | semmle.label | ControlFlowNode for request |
 | test.py:13:16:13:27 | ControlFlowNode for Attribute | semmle.label | ControlFlowNode for Attribute |
@@ -24,6 +28,11 @@ nodes
 | test.py:42:12:42:23 | ControlFlowNode for Attribute | semmle.label | ControlFlowNode for Attribute |
 | test.py:43:22:43:25 | ControlFlowNode for data | semmle.label | ControlFlowNode for data |
 | test.py:44:25:44:28 | ControlFlowNode for data | semmle.label | ControlFlowNode for data |
+| test.py:47:17:47:19 | ControlFlowNode for arg | semmle.label | ControlFlowNode for arg |
+| test.py:50:32:50:34 | ControlFlowNode for arg | semmle.label | ControlFlowNode for arg |
+| test.py:54:12:54:18 | ControlFlowNode for request | semmle.label | ControlFlowNode for request |
+| test.py:54:12:54:23 | ControlFlowNode for Attribute | semmle.label | ControlFlowNode for Attribute |
+| test.py:55:17:55:20 | ControlFlowNode for data | semmle.label | ControlFlowNode for data |
 subpaths
 #select
 | test.py:15:36:15:39 | ControlFlowNode for data | test.py:13:16:13:22 | ControlFlowNode for request | test.py:15:36:15:39 | ControlFlowNode for data | Call to hmac.new [position 1] with untrusted data from $@. | test.py:13:16:13:22 | ControlFlowNode for request | ControlFlowNode for request |
@@ -32,3 +41,5 @@ subpaths
 | test.py:36:13:36:16 | ControlFlowNode for data | test.py:34:12:34:18 | ControlFlowNode for request | test.py:36:13:36:16 | ControlFlowNode for data | Call to unknown.lib.func [keyword kw] with untrusted data from $@. | test.py:34:12:34:18 | ControlFlowNode for request | ControlFlowNode for request |
 | test.py:43:22:43:25 | ControlFlowNode for data | test.py:42:12:42:18 | ControlFlowNode for request | test.py:43:22:43:25 | ControlFlowNode for data | Call to unknown.lib.func [position 0] with untrusted data from $@. | test.py:42:12:42:18 | ControlFlowNode for request | ControlFlowNode for request |
 | test.py:44:25:44:28 | ControlFlowNode for data | test.py:42:12:42:18 | ControlFlowNode for request | test.py:44:25:44:28 | ControlFlowNode for data | Call to unknown.lib.func [keyword kw] with untrusted data from $@. | test.py:42:12:42:18 | ControlFlowNode for request | ControlFlowNode for request |
+| test.py:50:32:50:34 | ControlFlowNode for arg | test.py:54:12:54:18 | ControlFlowNode for request | test.py:50:32:50:34 | ControlFlowNode for arg | Call to None.json.dumps [position 0] with untrusted data from $@. | test.py:54:12:54:18 | ControlFlowNode for request | ControlFlowNode for request |
+| test.py:50:32:50:34 | ControlFlowNode for arg | test.py:54:12:54:18 | ControlFlowNode for request | test.py:50:32:50:34 | ControlFlowNode for arg | Call to builtins.None.json.dumps [position 0] with untrusted data from $@. | test.py:54:12:54:18 | ControlFlowNode for request | ControlFlowNode for request |
