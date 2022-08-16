@@ -195,6 +195,15 @@ def test_bound_method_call():
     SINK_F(foo.x) # $ SPURIOUS: flow="SOURCE, l:-4 -> foo.x"
 
 
+def call_with_source(func):
+    func(SOURCE)
+
+def test_bound_method_passed_as_arg():
+    foo = Foo(None)
+    call_with_source(foo.update_x)
+    SINK(foo.x) # $ MISSING: flow="SOURCE, l:-5 -> foo.x"
+
+
 # ------------------------------------------------------------------------------
 # Crosstalk test -- using different function based on conditional
 # ------------------------------------------------------------------------------

@@ -336,13 +336,21 @@ predicate getCallArg(
     // self argument for normal method calls
     type instanceof CallTypeNormalMethod and
     apos.isSelf() and
-    resolveMethodCall(call, target, type, arg)
+    resolveMethodCall(call, target, type, arg) and
+    // dataflow lib has requirement that arguments and calls are in same enclosing callable.
+    exists(CfgNode cfgNode | cfgNode.getNode() = call |
+      cfgNode.getEnclosingCallable() = arg.getEnclosingCallable()
+    )
     or
     // cls argument for classmethod calls
     type instanceof CallTypeClassMethod and
     apos.isSelf() and
     resolveMethodCall(call, target, type, arg) and
-    arg = classTracker(_)
+    arg = classTracker(_) and
+    // dataflow lib has requirement that arguments and calls are in same enclosing callable.
+    exists(CfgNode cfgNode | cfgNode.getNode() = call |
+      cfgNode.getEnclosingCallable() = arg.getEnclosingCallable()
+    )
     or
     // normal arguments for method calls
     (
