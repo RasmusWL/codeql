@@ -312,17 +312,31 @@ private predicate normalCallArg(CallNode call, Node arg, ArgumentPosition apos) 
   )
 }
 
-// TODO: need to highlight that target is actually needed, to avoid cross-talk in
-// if cond:
-//     func = objx.setx
-// else:
-//     func = objy.sety
-//
-// # What we're testing for is whether both objects are passed as self to both methods,
-// # which would be wrong.
-//
-// func(42)
-//
+/**
+ * Gets the argument of `call` at position `apos`, if any, where we can resolve `call`
+ * to `target` with CallType `type`.
+ *
+ * It might seem like it's enough to know the CallType to resolve arguments. The reason
+ * we also need the `target`, is to avoid cross-talk. In the example below, assuming
+ * that `Foo` and `Bar` define their own `meth` methods, we might end up passing _both_
+ * `foo` and `bar` to both `Foo.meth` and `Bar.meth`, which is wrong. Since the
+ * attribute access uses the same name, we need to also distinguish on the resolved
+ * target, to know which of the two objects to pass as the self argument.
+ *
+ *
+ * ```py
+ * foo = Foo()
+ * bar = Bar()
+ * if cond:
+ *     func = foo.meth
+ * else:
+ *     func = bar.meth
+ * func(42)
+ * ```
+ *
+ * Note: If `Bar.meth` and `Foo.meth` resolves to the same function, we will end up
+ * sending both `self` arguments to that function, which is by definition the right thing to do.
+ */
 predicate getCallArg(
   ControlFlowNode call, Function target, CallType type, Node arg, ArgumentPosition apos
 ) {
