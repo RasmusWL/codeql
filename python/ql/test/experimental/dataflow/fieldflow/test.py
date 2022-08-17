@@ -219,6 +219,9 @@ class CrosstalkTestX:
     def setvalue(self, value):
         self.x = value
 
+    def do_nothing(self, value):
+        pass
+
 
 class CrosstalkTestY:
     def __init__(self):
@@ -323,6 +326,27 @@ def test_potential_crosstalk_same_name_object_reference(cond=True):
 
     SINK(obj.x) # $ flow="SOURCE, l:-7 -> obj.x"
     SINK_F(obj.y) # $ flow="SOURCE, l:-8 -> obj.y"
+
+
+@expects(4) # $ unresolved_call=expects(..) unresolved_call=expects(..)(..)
+def test_potential_crosstalk_same_class(cond=True):
+    objx1 = CrosstalkTestX()
+    SINK_F(objx1.x)
+
+    objx2 = CrosstalkTestX()
+    SINK_F(objx2.x)
+
+    if cond:
+        func = objx1.setvalue
+    else:
+        func = objx2.do_nothing
+
+    # We want to ensure that objx2.x does not end up getting tainted, since that would
+    # be cross-talk between the self arguments are their functions.
+    func(SOURCE)
+
+    SINK(objx1.x) # $ flow="SOURCE, l:-2 -> objx1.x"
+    SINK_F(objx2.x)
 
 
 # ------------------------------------------------------------------------------
