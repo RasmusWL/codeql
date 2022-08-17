@@ -712,8 +712,8 @@ Node superCallAttrTracker(AttrRead attr) {
  *
  * NOTE for debugging the results of this predicate: Since a class can be part of
  * multiple MROs, results from this predicate might only be valid in some, but not all,
- * inheritance chains (such as the result `C` for `cls=B` in the example below -- this
- * might be difficult to see if the definition of `D` is located in an other file)
+ * inheritance chains (such as the result `C` for `cls=B` in the first example -- this
+ * might make it difficult to see if the definition of `D` is located in an other file)
  *
  * For more info on the C3 MRO used in Python see:
  * - https://docs.python.org/3/glossary.html#term-method-resolution-order
@@ -721,13 +721,12 @@ Node superCallAttrTracker(AttrRead attr) {
  */
 private Class getNextClassInMro(Class cls) {
   // class A(B, ...):
-  // `B` can be the next class after `A` in MRO.
+  // `B` must be the next class after `A` in the MRO for A.
   cls.getBase(0) = classTracker(result).asExpr()
   or
   // class A(B, C, D):
-  // - `C` can be the next class after `B` in MRO.
-  // - `D` can be the next class after `C` in MRO.
-  // TODO: in some cases, C can be next class after superclass of B in MRO (when that superclass is the last in the MRO of B not in MRO of C or in MRO of D)
+  // - `C` could be the next class after `B` in MRO.
+  // - `D` could be the next class after `C` in MRO.
   exists(Class sub, int i |
     sub.getBase(i) = classTracker(cls).asExpr() and
     sub.getBase(i + 1) = classTracker(result).asExpr() and
@@ -737,8 +736,8 @@ private Class getNextClassInMro(Class cls) {
   //
   // 1) monotonicity: if C1 precedes C2 in the MRO of C, then C1 precedes C2 in the MRO
   //    of any subclass of C.
-  // 2) local precedence ordering: if C1 precedes C2 in the list of superclasses, they
-  //    will keep the same order in the MRO for C (and due to monotonicity, any
+  // 2) local precedence ordering: if C1 precedes C2 in the list of superclasses for C,
+  //    they will keep the same order in the MRO for C (and due to monotonicity, any
   //    subclass).
 }
 
@@ -896,16 +895,6 @@ Function invokedFunctionFromClassConstruction(Class cls) {
   result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__init__")
 }
 
-// TODO: FIXME: ACTUALLY, if something could be BOTH a plain function call, and a
-// method-as-plain-function-call, since plain function call doesn't override
-// getArgument, the most-specific implementation will be the
-// method-as-plain-function-call, and it won't be possible to treat arg0 as arg0 :O will
-// have to test this out though :O
-//
-// Will need some better test setup, since I already wrote such a test, but that only
-// covers that callables are resolved correctly, not that arguments are passed correctly :|
-//
-// I guess we do have the dataflow argument-passing tests that could be used :shrug:
 /** Gets a viable run-time target for the call `call`. */
 DataFlowCallable viableCallable(DataFlowCall call) { result = call.getCallable() }
 
