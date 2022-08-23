@@ -3,6 +3,18 @@
  *
  * TypeTracker based call-graph.
  *
+ * The overall scheme for resolving calls, is to notice that Python has different kinds
+ * of callables, and resolve those with different strategies. Currently we handle these
+ * completely separately:
+ * 1. plain functions (and lambdas)
+ * 2. methods on classes
+ * 3. class instantiation
+ *
+ * So we have type-trackers for each of the 3 categories above, with some considerable
+ * effort to handle different kinds of methods on classes (staticmethod, classmethod,
+ * normal), and resolving methods correctly in regards to MRO.
+ *
+ *
  * A goal of this library is to support modeling calls that happens by third-party
  * libraries. For example `call_later(func, arg0, arg1, foo=val)`, and the fact that the
  * library might inject it's own arguments, for example a context that will always be
@@ -15,19 +27,23 @@
  * Specifically this means that we cannot use type-backtrackes from the function of a
  * `CallNode`, since there is no `CallNode` to backtrack from for `func` in the example
  * above.
+ *
+ * Note: This hasn't been 100% realized yet, so we don't currently expose a predicate to
+ * ask what targets any data-flow node has. But it's still the plan to do this!
  */
 
 private import python
 private import DataFlowPublic
 
 newtype TParameterPosition =
+  /** Used for `self` in methods, and `cls` in classmethods. */
   TSelfParameterPosition() or
   TPositionalParameterPosition(int pos) { pos = any(Parameter p).getPosition() } or
   TKeywordParameterPosition(string name) { name = any(Parameter p).getName() }
 
 /** A parameter position. */
 class ParameterPosition extends TParameterPosition {
-  /** Holds if this position represents a `self` parameter. */
+  /** Holds if this position represents a `self`/`cls` parameter. */
   predicate isSelf() { this = TSelfParameterPosition() }
 
   /** Holds if this position represents a positional parameter at (0-based) `index`. */
@@ -47,13 +63,14 @@ class ParameterPosition extends TParameterPosition {
 }
 
 newtype TArgumentPosition =
+  /** Used for `self` in methods, and `cls` in classmethods. */
   TSelfArgumentPosition() or
   TPositionalArgumentPosition(int pos) { exists(any(CallNode c).getArg(pos)) } or
   TKeywordArgumentPosition(string name) { exists(any(CallNode c).getArgByName(name)) }
 
 /** An argument position. */
 class ArgumentPosition extends TArgumentPosition {
-  /** Holds if this position represents a `self` argument. */
+  /** Holds if this position represents a `self`/`cls` argument. */
   predicate isSelf() { this = TSelfArgumentPosition() }
 
   /** Holds if this position represents a positional argument at (0-based) `index`. */
@@ -82,9 +99,29 @@ predicate parameterMatch(ParameterPosition ppos, ArgumentPosition apos) {
   exists(string name | ppos.isKeyword(name) and apos.isKeyword(name))
 }
 
+// =============================================================================
+// Helper predicates
+// =============================================================================
+/** Holds if the function has a `staticmethod` decorator. */
+predicate hasStaticmethodDecorator(Function func) {
+  exists(NameNode id | id.getId() = "staticmethod" and id.isGlobal() |
+    func.getADecorator() = id.getNode()
+  )
+}
+
+/** Holds if the function has a `classmethod` decorator. */
+predicate hasClassmethodDecorator(Function func) {
+  exists(NameNode id | id.getId() = "classmethod" and id.isGlobal() |
+    func.getADecorator() = id.getNode()
+  )
+}
+
+// =============================================================================
+// Callables
+// =============================================================================
 newtype TDataFlowCallable =
   TFunction(Function func) or
-  /** For enclosing `ModuleVariableNode`s -- a `TModule` don't actually have calls. */
+  /** see QLDoc for `DataFlowModuleScope` for why we need this. */
   TModule(Module m)
 
 /** A callable. */
@@ -161,7 +198,7 @@ class DataFlowStaticmethod extends DataFlowFunction {
     hasStaticmethodDecorator(func)
   }
 
-  /** Gets the class this function is a method of. */
+  /** Gets the class this function is a staticmethod of. */
   Class getClass() { result = cls }
 
   override ParameterNode getParameter(ParameterPosition ppos) {
@@ -191,6 +228,398 @@ class DataFlowModuleScope extends DataFlowCallable, TModule {
   override ParameterNode getParameter(ParameterPosition ppos) { none() }
 }
 
+// =============================================================================
+// Type trackers used to resolve calls.
+// =============================================================================
+/** Gets a call to `type`. */
+private CallCfgNode getTypeCall() {
+  exists(NameNode id | id.getId() = "type" and id.isGlobal() |
+    result.getFunction().asCfgNode() = id
+  )
+}
+
+/** Gets a call to `super`. */
+private CallCfgNode getSuperCall() {
+  exists(NameNode id | id.getId() = "super" and id.isGlobal() |
+    result.getFunction().asCfgNode() = id
+  )
+}
+
+/** Gets a reference to `super`. */
+private TypeTrackingNode superTracker(TypeTracker t) {
+  t.start() and
+  exists(NameNode id | id.getId() = "super" and id.isGlobal() | result.asCfgNode() = id)
+  or
+  exists(TypeTracker t2 | result = superTracker(t2).track(t2, t))
+}
+
+/** Gets a reference to `super`. */
+Node superTracker() { superTracker(TypeTracker::end()).flowsTo(result) }
+
+/**
+ * Gets a reference to the function `func`.
+ */
+private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
+  t.start() and
+  (
+    result.asExpr() = func.getDefinition()
+    or
+    // when a function is decorated, it's the result of the (last) decorator call that
+    // is used
+    result.asExpr() = func.getDefinition().(FunctionExpr).getADecoratorCall()
+  )
+  or
+  exists(TypeTracker t2 | result = functionTracker(t2, func).track(t2, t))
+}
+
+/**
+ * Gets a reference to the function `func`.
+ */
+Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).flowsTo(result) }
+
+/**
+ * Gets a reference to the class `cls`.
+ */
+private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
+  t.start() and
+  (
+    result.asExpr() = cls.getParent()
+    or
+    // when a class is decorated, it's the result of the (last) decorator call that
+    // is used
+    result.asExpr() = cls.getParent().(ClassExpr).getADecoratorCall()
+    or
+    // `type(obj)`, where obj is an instance of this class
+    result = getTypeCall() and
+    result.(CallCfgNode).getArg(0) = classInstanceTracker(cls)
+  )
+  or
+  exists(TypeTracker t2 | result = classTracker(t2, cls).track(t2, t))
+}
+
+/**
+ * Gets a reference to the class `cls`.
+ */
+Node classTracker(Class cls) { classTracker(TypeTracker::end(), cls).flowsTo(result) }
+
+/**
+ * Gets a reference to an instance of the class `cls`.
+ */
+private TypeTrackingNode classInstanceTracker(TypeTracker t, Class cls) {
+  t.start() and
+  result.(CallCfgNode).getFunction() = classTracker(cls)
+  or
+  exists(TypeTracker t2 | result = classInstanceTracker(t2, cls).track(t2, t))
+}
+
+/**
+ * Gets a reference to an instance of the class `cls`.
+ */
+Node classInstanceTracker(Class cls) {
+  classInstanceTracker(TypeTracker::end(), cls).flowsTo(result)
+}
+
+/**
+ * Gets a reference to the `self` argument of a method on class `cls`.
+ * The method cannot be a `staticmethod` or `classmethod`.
+ */
+private TypeTrackingNode selfTracker(TypeTracker t, Class cls) {
+  t.start() and
+  exists(Function func |
+    func = cls.getAMethod() and
+    not hasStaticmethodDecorator(func) and
+    not hasClassmethodDecorator(func)
+  |
+    result.asExpr() = func.getArg(0)
+  )
+  or
+  exists(TypeTracker t2 | result = selfTracker(t2, cls).track(t2, t))
+}
+
+/**
+ * Gets a reference to the `self` argument of a method on class `cls`.
+ * The method cannot be a `staticmethod` or `classmethod`.
+ */
+Node selfTracker(Class cls) { selfTracker(TypeTracker::end(), cls).flowsTo(result) }
+
+/**
+ * Gets a reference to the `cls` argument of a classmethod on class `cls`.
+ */
+private TypeTrackingNode clsTracker(TypeTracker t, Class cls) {
+  t.start() and
+  (
+    exists(Function func |
+      func = cls.getAMethod() and
+      hasClassmethodDecorator(func)
+    |
+      result.asExpr() = func.getArg(0)
+    )
+    or
+    // type(self)
+    result = getTypeCall() and
+    result.(CallCfgNode).getArg(0) = selfTracker(cls)
+  )
+  or
+  exists(TypeTracker t2 | result = clsTracker(t2, cls).track(t2, t))
+}
+
+/**
+ * Gets a reference to the `cls` argument of a classmethod on class `cls`.
+ */
+Node clsTracker(Class cls) { clsTracker(TypeTracker::end(), cls).flowsTo(result) }
+
+/**
+ * Gets a reference to the result of calling `super` without any argument, where the
+ * call happened in the method `func` (either a method or a classmethod).
+ */
+private TypeTrackingNode superCallNoArgumentTracker(TypeTracker t, Function func) {
+  not hasStaticmethodDecorator(func) and
+  t.start() and
+  exists(CallCfgNode call | result = call |
+    call.getFunction() = superTracker() and
+    not exists(call.getArg(_)) and
+    call.getScope() = func
+  )
+  or
+  exists(TypeTracker t2 | result = superCallNoArgumentTracker(t2, func).track(t2, t))
+}
+
+/**
+ * Gets a reference to the result of calling `super` without any argument, where the
+ * call happened in the method `func` (either a method or a classmethod).
+ */
+Node superCallNoArgumentTracker(Function func) {
+  superCallNoArgumentTracker(TypeTracker::end(), func).flowsTo(result)
+}
+
+/**
+ * Gets a reference to the result of calling `super` with 2 arguments, where the
+ * first is a reference to the class `cls`, and the second argument is `obj`.
+ */
+private TypeTrackingNode superCallTwoArgumentTracker(TypeTracker t, Class cls, Node obj) {
+  t.start() and
+  exists(CallCfgNode call | result = call |
+    call.getFunction() = superTracker() and
+    call.getArg(0) = classTracker(cls) and
+    call.getArg(1) = obj
+  )
+  or
+  exists(TypeTracker t2 | result = superCallTwoArgumentTracker(t2, cls, obj).track(t2, t))
+}
+
+/**
+ * Gets a reference to the result of calling `super` with 2 arguments, where the
+ * first is a reference to the class `cls`, and the second argument is `obj`.
+ */
+Node superCallTwoArgumentTracker(Class cls, Node obj) {
+  superCallTwoArgumentTracker(TypeTracker::end(), cls, obj).flowsTo(result)
+}
+
+// =============================================================================
+// MRO
+// =============================================================================
+/**
+ * Gets a direct superclass of the argument `cls`, if any.
+ *
+ * For `A` with the class definition `class A(B, C)` it will have results `B` and `C`.
+ */
+Class getADirectSuperclass(Class cls) { cls.getABase() = classTracker(result).asExpr() }
+
+/**
+ * Gets a direct subclass of the argument `cls`, if any.
+ *
+ *For `B` with the class definition `class A(B)` it will have result `A`.
+ */
+Class getADirectSubclass(Class cls) { cls = getADirectSuperclass(result) }
+
+/**
+ * Gets a class that, from an approximated MRO calculation, might be the next class used
+ * for member-lookup when `super().attr` is used inside the class `cls`.
+ *
+ * In the example below, with `cls=B`, this predicate will have `A` and `C` as results.
+ * ```py
+ * class A: pass
+ * class B(A): pass
+ * class C(A): pass
+ * class D(B, C): pass
+ * ```
+ *
+ * NOTE: This approximation does not handle all cases correctly, and in the example
+ * below, with `cls=A` will not have any results, although it should include `Y`.
+ *
+ * ```py
+ * class A: pass
+ * class B(A): pass
+ * class X: pass
+ * class Y(X): pass
+ * class Ex(B, Y): pass
+ * ```
+ *
+ * NOTE for debugging the results of this predicate: Since a class can be part of
+ * multiple MROs, results from this predicate might only be valid in some, but not all,
+ * inheritance chains (such as the result `C` for `cls=B` in the first example -- this
+ * might make it difficult to see if the definition of `D` is located in an other file)
+ *
+ * For more info on the C3 MRO used in Python see:
+ * - https://docs.python.org/3/glossary.html#term-method-resolution-order
+ * - https://www.python.org/download/releases/2.3/mro/
+ */
+private Class getNextClassInMro(Class cls) {
+  // class A(B, ...):
+  // `B` must be the next class after `A` in the MRO for A.
+  cls.getBase(0) = classTracker(result).asExpr()
+  or
+  // class A(B, C, D):
+  // - `C` could be the next class after `B` in MRO.
+  // - `D` could be the next class after `C` in MRO.
+  exists(Class sub, int i |
+    sub.getBase(i) = classTracker(cls).asExpr() and
+    sub.getBase(i + 1) = classTracker(result).asExpr() and
+    not result = cls
+  )
+  // There are two important properties for MRO computed with C3 in Python:
+  //
+  // 1) monotonicity: if C1 precedes C2 in the MRO of C, then C1 precedes C2 in the MRO
+  //    of any subclass of C.
+  // 2) local precedence ordering: if C1 precedes C2 in the list of superclasses for C,
+  //    they will keep the same order in the MRO for C (and due to monotonicity, any
+  //    subclass).
+}
+
+/**
+ * Gets a potential definition of the function `name` according to our approximation of
+ * MRO for the class `cls` (see `getNextClassInMro` for more information).
+ */
+Function findFunctionAccordingToMro(Class cls, string name) {
+  result = cls.getAMethod() and
+  result.getName() = name
+  or
+  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
+  result = findFunctionAccordingToMro(getNextClassInMro(cls), name)
+}
+
+/**
+ * Gets a class that, from an approximated MRO calculation, might be the next class
+ * after `cls` in the MRO for `startingClass`.
+ *
+ * Note: this is almost the same as `getNextClassInMro`, except we know the
+ * `startingClass`, which can give slightly more precise results.
+ *
+ * See QLDoc for `getNextClassInMro`.
+ */
+Class getNextClassInMroKnownStartingClass(Class cls, Class startingClass) {
+  cls.getBase(0) = classTracker(result).asExpr() and
+  cls = getADirectSuperclass*(startingClass)
+  or
+  exists(Class sub, int i | sub = getADirectSuperclass*(startingClass) |
+    sub.getBase(i) = classTracker(cls).asExpr() and
+    sub.getBase(i + 1) = classTracker(result).asExpr() and
+    not result = cls
+  )
+}
+
+private Function findFunctionAccordingToMroKnownStartingClass(
+  Class cls, Class startingClass, string name
+) {
+  result = cls.getAMethod() and
+  result.getName() = name and
+  cls = getADirectSuperclass*(startingClass)
+  or
+  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
+  result =
+    findFunctionAccordingToMroKnownStartingClass(getNextClassInMroKnownStartingClass(cls,
+        startingClass), startingClass, name)
+}
+
+/**
+ * Gets a potential definition of the function `name` according to our approximation of
+ * MRO for the class `cls` (see `getNextClassInMroKnownStartingClass` for more information).
+ *
+ * Note: this is almost the same as `findFunctionAccordingToMro`, except we know the
+ * `startingClass`, which can give slightly more precise results.
+ */
+pragma[inline]
+Function findFunctionAccordingToMroKnownStartingClass(Class startingClass, string name) {
+  result = findFunctionAccordingToMroKnownStartingClass(startingClass, startingClass, name)
+}
+
+// =============================================================================
+// attribute trackers
+// =============================================================================
+// TODO: need to explain why we have these attrTrackers
+private TypeTrackingNode classAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = classTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = classAttrTracker(t2, attr).track(t2, t))
+}
+
+Node classAttrTracker(AttrRead attr) { classAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
+
+// TODO: need to explain why we have these attrTrackers
+private TypeTrackingNode classInstanceAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = classInstanceTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = classInstanceAttrTracker(t2, attr).track(t2, t))
+}
+
+Node classInstanceAttrTracker(AttrRead attr) {
+  classInstanceAttrTracker(TypeTracker::end(), attr).flowsTo(result)
+}
+
+// TODO: need to explain why we have these attrTrackers
+private TypeTrackingNode selfAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = selfTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = selfAttrTracker(t2, attr).track(t2, t))
+}
+
+Node selfAttrTracker(AttrRead attr) { selfAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
+
+// TODO: need to explain why we have these attrTrackers
+private TypeTrackingNode clsAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  attr.getObject() = clsTracker(_) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = clsAttrTracker(t2, attr).track(t2, t))
+}
+
+Node clsAttrTracker(AttrRead attr) { clsAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
+
+// TODO: need to explain why we have these attrTrackers
+/**
+ * Gets a reference to an attribute lookup where the object is the result of a `super()`
+ * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
+ */
+private TypeTrackingNode superCallAttrTracker(TypeTracker t, AttrRead attr) {
+  t.start() and
+  (
+    attr.getObject() = superCallNoArgumentTracker(_)
+    or
+    attr.getObject() = superCallTwoArgumentTracker(_, _)
+  ) and
+  result = attr
+  or
+  exists(TypeTracker t2 | result = superCallAttrTracker(t2, attr).track(t2, t))
+}
+
+/**
+ * Gets a reference to an attribute lookup where the object is the result of a `super()`
+ * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
+ */
+Node superCallAttrTracker(AttrRead attr) {
+  superCallAttrTracker(TypeTracker::end(), attr).flowsTo(result)
+}
+
+// =============================================================================
+// call and argument resolution
+// =============================================================================
 newtype TCallType =
   /** A call to a function that is not part of a class. */
   CallTypePlainFunction() or
@@ -219,6 +648,7 @@ newtype TCallType =
   /** A call to a class. */
   CallTypeClass()
 
+/** A type of call. */
 class CallType extends TCallType {
   string toString() {
     this instanceof CallTypePlainFunction and
@@ -241,41 +671,161 @@ class CallType extends TCallType {
   }
 }
 
-predicate resolveMethodCall(ControlFlowNode call, Function target, CallType type, Node self) {
-  (
-    directCall(call, target, _, _, _, self)
-    or
-    callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
-    or
-    fromSuper(call, target, _, _, _, self)
-  ) and
-  (
-    // normal method call
-    type instanceof CallTypeNormalMethod and
+// -------------------------------------
+// method call resolution
+// -------------------------------------
+private module MethodCalls {
+  /**
+   * Holds if `call` is a call to a method `target` on an instance or class, where the
+   * instance or class is not derived from an implicit `self`/`cls` argument to a method
+   * -- for that, see `callWithinMethodImplicitSelfOrCls`.
+   *
+   * It is found by making an attribute read `attr` with the name `functionName` on a
+   * reference to the class `cls`, or to an instance of the class `cls`. The reference the
+   * attribute-read is made on is `self`.
+   */
+  pragma[noinline]
+  private predicate directCall(
+    CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
+  ) {
+    target = findFunctionAccordingToMroKnownStartingClass(cls, cls, functionName) and
+    directCall_join(call, functionName, cls, attr, self)
+  }
+
+  /** Extracted to give good join order */
+  pragma[noinline]
+  private predicate directCall_join(
+    CallNode call, string functionName, Class cls, AttrRead attr, Node self
+  ) {
     (
-      self = classInstanceTracker(_)
+      call.getFunction() = classAttrTracker(attr).asCfgNode() and
+      attr.accesses(classTracker(cls), functionName)
       or
-      self = selfTracker(_)
+      call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
+      attr.accesses(classInstanceTracker(cls), functionName)
     ) and
-    not hasStaticmethodDecorator(target) and
-    not hasClassmethodDecorator(target)
-    or
-    // method as plain function call
-    type instanceof CallTypeMethodAsPlainFunction and
-    self = classTracker(_) and
-    not hasStaticmethodDecorator(target) and
-    not hasClassmethodDecorator(target)
-    or
-    // staticmethod call
-    type instanceof CallTypeStaticMethod and
-    hasStaticmethodDecorator(target)
-    or
-    // classmethod call
-    type instanceof CallTypeClassMethod and
-    hasClassmethodDecorator(target)
-  )
+    attr.accesses(self, functionName)
+  }
+
+  /**
+   * Holds if `call` is a call to a method `target` derived from an implicit `self`/`cls`
+   * argument to a method within the class `methodWithinClass`.
+   *
+   * It is found by making an attribute read `attr` with the name `functionName` on a
+   * reference to an implicit `self`/`cls` argument. The reference the attribute-read is
+   * made on is `self`.
+   */
+  pragma[noinline]
+  private predicate callWithinMethodImplicitSelfOrCls(
+    CallNode call, Function target, string functionName, Class methodWithinClass, AttrRead attr,
+    Node self
+  ) {
+    target = findFunctionAccordingToMro(getADirectSubclass*(methodWithinClass), functionName) and
+    callWithinMethodImplicitSelfOrCls_join(call, functionName, methodWithinClass, attr, self)
+  }
+
+  /** Extracted to give good join order */
+  pragma[noinline]
+  private predicate callWithinMethodImplicitSelfOrCls_join(
+    CallNode call, string functionName, Class methodWithinClass, AttrRead attr, Node self
+  ) {
+    (
+      call.getFunction() = clsAttrTracker(attr).asCfgNode() and
+      attr.accesses(clsTracker(methodWithinClass), functionName)
+      or
+      call.getFunction() = selfAttrTracker(attr).asCfgNode() and
+      attr.accesses(selfTracker(methodWithinClass), functionName)
+    ) and
+    attr.accesses(self, functionName)
+  }
+
+  /**
+   * Holds if `call` is a call to a method `target`, derived from a use of `super`, either
+   * as:
+   *
+   * (1) `super(SomeClass, obj)`, where the first argument is a reference to the class
+   * `classUsedInSuper`, and the second argument is `self`.
+   *
+   * (2) `super()`. This implicit version can only happen within a method in a class.
+   * The implicit first argument is the class the call happens within `classUsedInSuper`.
+   * The implicit second argument is the `self`/`cls` parameter of the method this happens
+   * within.
+   *
+   * The method call is found by making an attribute read `attr` with the name
+   * `functionName` on the return value from the `super` call.
+   */
+  pragma[noinline]
+  predicate fromSuper(
+    CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
+    Node self
+  ) {
+    target = findFunctionAccordingToMro(getNextClassInMro(classUsedInSuper), functionName) and
+    fromSuper_join(call, functionName, classUsedInSuper, attr, self)
+  }
+
+  /** Extracted to give good join order */
+  pragma[noinline]
+  private predicate fromSuper_join(
+    CallNode call, string functionName, Class classUsedInSuper, AttrRead attr, Node self
+  ) {
+    call.getFunction() = superCallAttrTracker(attr).asCfgNode() and
+    (
+      exists(Function func |
+        attr.accesses(superCallNoArgumentTracker(func), functionName) and
+        // Requiring enclosing scope of function to be a class is a little too
+        // restrictive, since it is possible to use `super()` in a function defined inside
+        // the method, where the first argument to the nested-function will be used as
+        // implicit self argument. In practice I don't expect this to be a problem, and we
+        // did not support this with points-to either.
+        func.getEnclosingScope() = classUsedInSuper and
+        self.(ParameterNode).getParameter() = func.getArg(0)
+      )
+      or
+      attr.accesses(superCallTwoArgumentTracker(classUsedInSuper, self), functionName)
+    )
+  }
+
+  predicate resolveMethodCall(ControlFlowNode call, Function target, CallType type, Node self) {
+    (
+      directCall(call, target, _, _, _, self)
+      or
+      callWithinMethodImplicitSelfOrCls(call, target, _, _, _, self)
+      or
+      fromSuper(call, target, _, _, _, self)
+    ) and
+    (
+      // normal method call
+      type instanceof CallTypeNormalMethod and
+      (
+        self = classInstanceTracker(_)
+        or
+        self = selfTracker(_)
+      ) and
+      not hasStaticmethodDecorator(target) and
+      not hasClassmethodDecorator(target)
+      or
+      // method as plain function call
+      type instanceof CallTypeMethodAsPlainFunction and
+      self = classTracker(_) and
+      not hasStaticmethodDecorator(target) and
+      not hasClassmethodDecorator(target)
+      or
+      // staticmethod call
+      type instanceof CallTypeStaticMethod and
+      hasStaticmethodDecorator(target)
+      or
+      // classmethod call
+      type instanceof CallTypeClassMethod and
+      hasClassmethodDecorator(target)
+    )
+  }
 }
 
+import MethodCalls
+
+// -------------------------------------
+// class call resolution
+// -------------------------------------
 /**
  * Holds when `call` is a call to the class `cls`.
  *
@@ -286,6 +836,26 @@ predicate resolveClassCall(CallNode call, Class cls) {
   call.getFunction() = classTracker(cls).asCfgNode()
 }
 
+/**
+ * Gets a function (`__init__`/`__new__`) that will be invoked when `cls` is
+ * constructed -- where the function lookup is based on our MRO calculation.
+ */
+Function invokedFunctionFromClassConstruction(Class cls) {
+  result = findFunctionAccordingToMroKnownStartingClass(cls, "__new__")
+  or
+  // as described in https://docs.python.org/3/reference/datamodel.html#object.__new__
+  // __init__ will only be called when __new__ returns an instance of the class (which
+  // is not a requirement). However, for simplicity, we assume that __init__ will always
+  // be called.
+  result = findFunctionAccordingToMroKnownStartingClass(cls, "__init__")
+}
+
+// -------------------------------------
+// overall call resolution
+// -------------------------------------
+/**
+ * Holds if `call` is a call to the `target`, with call-type `type`.
+ */
 predicate resolveCall(ControlFlowNode call, Function target, CallType type) {
   type instanceof CallTypePlainFunction and
   call.(CallNode).getFunction() = functionTracker(target).asCfgNode() and
@@ -300,6 +870,13 @@ predicate resolveCall(ControlFlowNode call, Function target, CallType type) {
   )
 }
 
+// =============================================================================
+// Argument resolution
+// =============================================================================
+/**
+ * Holds if the argument of `call` at position `apos` is `arg`. This is just a helper
+ * predicate that maps ArgumentPositions to the arguments of the underlying `CallNode`.
+ */
 private predicate normalCallArg(CallNode call, Node arg, ArgumentPosition apos) {
   exists(int index |
     apos.isPositional(index) and
@@ -403,6 +980,9 @@ predicate getCallArg(
   )
 }
 
+// =============================================================================
+// DataFlowCall
+// =============================================================================
 newtype TDataFlowCall =
   TNormalCall(CallNode call, Function target, CallType type) { resolveCall(call, target, type) }
 
@@ -427,6 +1007,15 @@ abstract class DataFlowCall extends TDataFlowCall {
   abstract ArgumentNode getArgument(ArgumentPosition apos);
 }
 
+/** Gets a viable run-time target for the call `call`. */
+DataFlowCallable viableCallable(DataFlowCall call) { result = call.getCallable() }
+
+/**
+ * A call in source code with an underlying `CallNode`.
+ *
+ * This is considered normal, compared with special calls such as `obj[0]` calling the
+ * `__getitem__` method on the object.
+ */
 class NormalCall extends DataFlowCall, TNormalCall {
   CallNode call;
   Function target;
@@ -436,8 +1025,8 @@ class NormalCall extends DataFlowCall, TNormalCall {
 
   override string toString() {
     // note: if we used toString directly on the CallNode we would get
-    //    `ControlFlowNode for func()`
-    // but the `ControlFlowNode` is just clutter, so we go directly to the AST node
+    //     `ControlFlowNode for func()`
+    // but the `ControlFlowNode` part is just clutter, so we go directly to the AST node
     // instead.
     result = call.getNode().toString()
   }
@@ -456,462 +1045,9 @@ class NormalCall extends DataFlowCall, TNormalCall {
   CallType getCallType() { result = type }
 }
 
-/** Holds if the function has a `staticmethod` decorator. */
-predicate hasStaticmethodDecorator(Function func) {
-  exists(NameNode id | id.getId() = "staticmethod" and id.isGlobal() |
-    func.getADecorator() = id.getNode()
-  )
-}
-
-/** Holds if the function has a `classmethod` decorator. */
-predicate hasClassmethodDecorator(Function func) {
-  exists(NameNode id | id.getId() = "classmethod" and id.isGlobal() |
-    func.getADecorator() = id.getNode()
-  )
-}
-
-/**
- * Gets a reference to the Function `func`.
- */
-private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
-  t.start() and
-  (
-    result.asExpr() = func.getDefinition()
-    or
-    // when a function is decorated, it's the result of the (last) decorator call that
-    // is used
-    result.asExpr() = func.getDefinition().(FunctionExpr).getADecoratorCall()
-  )
-  or
-  exists(TypeTracker t2 | result = functionTracker(t2, func).track(t2, t))
-}
-
-/**
- * Gets a reference to the Function `func`.
- */
-Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).flowsTo(result) }
-
-/** Gets a call to `type`. */
-private CallCfgNode getTypeCall() {
-  exists(NameNode id | id.getId() = "type" and id.isGlobal() |
-    result.getFunction().asCfgNode() = id
-  )
-}
-
-private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
-  t.start() and
-  (
-    result.asExpr() = cls.getParent()
-    or
-    // when a class is decorated, it's the result of the (last) decorator call that
-    // is used
-    result.asExpr() = cls.getParent().(ClassExpr).getADecoratorCall()
-    or
-    // `type(obj)`, where obj is an instance of this class
-    result = getTypeCall() and
-    result.(CallCfgNode).getArg(0) = classInstanceTracker(cls)
-  )
-  or
-  exists(TypeTracker t2 | result = classTracker(t2, cls).track(t2, t))
-}
-
-Node classTracker(Class cls) { classTracker(TypeTracker::end(), cls).flowsTo(result) }
-
-private TypeTrackingNode classAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  attr.getObject() = classTracker(_) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = classAttrTracker(t2, attr).track(t2, t))
-}
-
-Node classAttrTracker(AttrRead attr) { classAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
-
-private TypeTrackingNode classInstanceTracker(TypeTracker t, Class cls) {
-  t.start() and
-  result.(CallCfgNode).getFunction() = classTracker(cls)
-  or
-  exists(TypeTracker t2 | result = classInstanceTracker(t2, cls).track(t2, t))
-}
-
-Node classInstanceTracker(Class cls) {
-  classInstanceTracker(TypeTracker::end(), cls).flowsTo(result)
-}
-
-private TypeTrackingNode classInstanceAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  attr.getObject() = classInstanceTracker(_) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = classInstanceAttrTracker(t2, attr).track(t2, t))
-}
-
-Node classInstanceAttrTracker(AttrRead attr) {
-  classInstanceAttrTracker(TypeTracker::end(), attr).flowsTo(result)
-}
-
-/**
- * Gets a direct superclass of the argument `cls`, if any.
- *
- * For `A` with the class definition `class A(B, C)` it will have results `B` and `C`.
- */
-Class getADirectSuperclass(Class cls) { cls.getABase() = classTracker(result).asExpr() }
-
-/**
- * Gets a direct subclass of the argument `cls`, if any.
- *
- *For `B` with the class definition `class A(B)` it will have result `A`.
- */
-Class getADirectSubclass(Class cls) { cls = getADirectSuperclass(result) }
-
-private TypeTrackingNode selfTracker(TypeTracker t, Class cls) {
-  t.start() and
-  exists(Function func |
-    func = cls.getAMethod() and
-    not hasStaticmethodDecorator(func) and
-    not hasClassmethodDecorator(func)
-  |
-    result.asExpr() = func.getArg(0)
-  )
-  or
-  exists(TypeTracker t2 | result = selfTracker(t2, cls).track(t2, t))
-}
-
-Node selfTracker(Class cls) { selfTracker(TypeTracker::end(), cls).flowsTo(result) }
-
-private TypeTrackingNode selfAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  attr.getObject() = selfTracker(_) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = selfAttrTracker(t2, attr).track(t2, t))
-}
-
-Node selfAttrTracker(AttrRead attr) { selfAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
-
-private TypeTrackingNode clsTracker(TypeTracker t, Class cls) {
-  t.start() and
-  (
-    exists(Function func |
-      func = cls.getAMethod() and
-      hasClassmethodDecorator(func)
-    |
-      result.asExpr() = func.getArg(0)
-    )
-    or
-    // type(self)
-    result = getTypeCall() and
-    result.(CallCfgNode).getArg(0) = selfTracker(cls)
-  )
-  or
-  exists(TypeTracker t2 | result = clsTracker(t2, cls).track(t2, t))
-}
-
-Node clsTracker(Class cls) { clsTracker(TypeTracker::end(), cls).flowsTo(result) }
-
-private TypeTrackingNode clsAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  attr.getObject() = clsTracker(_) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = clsAttrTracker(t2, attr).track(t2, t))
-}
-
-Node clsAttrTracker(AttrRead attr) { clsAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
-
-/** Gets a reference to `super`. */
-private TypeTrackingNode superTracker(TypeTracker t) {
-  t.start() and
-  exists(NameNode id | id.getId() = "super" and id.isGlobal() | result.asCfgNode() = id)
-  or
-  exists(TypeTracker t2 | result = superTracker(t2).track(t2, t))
-}
-
-/** Gets a reference to `super`. */
-Node superTracker() { superTracker(TypeTracker::end()).flowsTo(result) }
-
-/**
- * Gets a reference to the result of calling `super` without any argument, where the
- * call happened in the method `func` (either a method or a class-method).
- */
-private TypeTrackingNode superCallNoArgumentTracker(TypeTracker t, Function func) {
-  not hasStaticmethodDecorator(func) and
-  t.start() and
-  exists(CallCfgNode call | result = call |
-    call.getFunction() = superTracker() and
-    not exists(call.getArg(_)) and
-    call.getScope() = func
-  )
-  or
-  exists(TypeTracker t2 | result = superCallNoArgumentTracker(t2, func).track(t2, t))
-}
-
-/**
- * Gets a reference to the result of calling `super` without any argument, where the
- * call happened in the method `func`.
- */
-Node superCallNoArgumentTracker(Function func) {
-  superCallNoArgumentTracker(TypeTracker::end(), func).flowsTo(result)
-}
-
-/**
- * Gets a reference to the result of calling `super` with 2 arguments, where the
- * first is a reference to the class `cls`, and the second argument is `obj`.
- */
-private TypeTrackingNode superCallTwoArgumentTracker(TypeTracker t, Class cls, Node obj) {
-  t.start() and
-  exists(CallCfgNode call | result = call |
-    call.getFunction() = superTracker() and
-    call.getArg(0) = classTracker(cls) and
-    call.getArg(1) = obj
-  )
-  or
-  exists(TypeTracker t2 | result = superCallTwoArgumentTracker(t2, cls, obj).track(t2, t))
-}
-
-/**
- * Gets a reference to the result of calling `super` with 2 arguments, where the
- * first is a reference to the class `cls`, and the second argument is `obj`.
- */
-Node superCallTwoArgumentTracker(Class cls, Node obj) {
-  superCallTwoArgumentTracker(TypeTracker::end(), cls, obj).flowsTo(result)
-}
-
-/**
- * Gets a reference to an attribute lookup where the object is the result of a `super()`
- * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
- */
-private TypeTrackingNode superCallAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  (
-    attr.getObject() = superCallNoArgumentTracker(_)
-    or
-    attr.getObject() = superCallTwoArgumentTracker(_, _)
-  ) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = superCallAttrTracker(t2, attr).track(t2, t))
-}
-
-/**
- * Gets a reference to an attribute lookup where the object is the result of a `super()`
- * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
- */
-Node superCallAttrTracker(AttrRead attr) {
-  superCallAttrTracker(TypeTracker::end(), attr).flowsTo(result)
-}
-
-/**
- * Gets a class that, from an approximated MRO calculation, might be the next class used
- * for member-lookup when `super().attr` is used inside the class `cls`.
- *
- * In the example below, with `cls=B`, this predicate will have `A` and `C` as results.
- * ```py
- * class A: pass
- * class B(A): pass
- * class C(A): pass
- * class D(B, C): pass
- * ```
- *
- * NOTE: This approximation does not handle all cases correctly, and in the example
- * below, with `cls=A` will not have any results, although it should include `Y`.
- *
- * ```py
- * class A: pass
- * class B(A): pass
- * class X: pass
- * class Y(X): pass
- * class Ex(B, Y): pass
- * ```
- *
- * NOTE for debugging the results of this predicate: Since a class can be part of
- * multiple MROs, results from this predicate might only be valid in some, but not all,
- * inheritance chains (such as the result `C` for `cls=B` in the first example -- this
- * might make it difficult to see if the definition of `D` is located in an other file)
- *
- * For more info on the C3 MRO used in Python see:
- * - https://docs.python.org/3/glossary.html#term-method-resolution-order
- * - https://www.python.org/download/releases/2.3/mro/
- */
-private Class getNextClassInMro(Class cls) {
-  // class A(B, ...):
-  // `B` must be the next class after `A` in the MRO for A.
-  cls.getBase(0) = classTracker(result).asExpr()
-  or
-  // class A(B, C, D):
-  // - `C` could be the next class after `B` in MRO.
-  // - `D` could be the next class after `C` in MRO.
-  exists(Class sub, int i |
-    sub.getBase(i) = classTracker(cls).asExpr() and
-    sub.getBase(i + 1) = classTracker(result).asExpr() and
-    not result = cls
-  )
-  // There are two important properties for MRO computed with C3 in Python:
-  //
-  // 1) monotonicity: if C1 precedes C2 in the MRO of C, then C1 precedes C2 in the MRO
-  //    of any subclass of C.
-  // 2) local precedence ordering: if C1 precedes C2 in the list of superclasses for C,
-  //    they will keep the same order in the MRO for C (and due to monotonicity, any
-  //    subclass).
-}
-
-/**
- * Gets a potential definition of the function `name` according to our approximation of
- * MRO for the class `cls` (see `getNextClassInMro` for more information).
- */
-Function findFunctionAccordingToMro(Class cls, string name) {
-  result = cls.getAMethod() and
-  result.getName() = name
-  or
-  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
-  result = findFunctionAccordingToMro(getNextClassInMro(cls), name)
-}
-
-Class getNextClassInMroKnownStartingClass(Class cls, Class startingClass) {
-  cls.getBase(0) = classTracker(result).asExpr() and
-  cls = getADirectSuperclass*(startingClass)
-  or
-  exists(Class sub, int i | sub = getADirectSuperclass*(startingClass) |
-    sub.getBase(i) = classTracker(cls).asExpr() and
-    sub.getBase(i + 1) = classTracker(result).asExpr() and
-    not result = cls
-  )
-}
-
-Function findFunctionAccordingToMroKnownStartingClass(Class cls, Class startingClass, string name) {
-  result = cls.getAMethod() and
-  result.getName() = name and
-  cls = getADirectSuperclass*(startingClass)
-  or
-  not exists(Function f | f.getName() = name and f = cls.getAMethod()) and
-  result =
-    findFunctionAccordingToMroKnownStartingClass(getNextClassInMroKnownStartingClass(cls,
-        startingClass), startingClass, name)
-}
-
-/** Extracted to give good join order */
-pragma[noinline]
-private predicate directCall_join(
-  CallNode call, string functionName, Class cls, AttrRead attr, Node self
-) {
-  (
-    call.getFunction() = classAttrTracker(attr).asCfgNode() and
-    attr.accesses(classTracker(cls), functionName)
-    or
-    call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
-    attr.accesses(classInstanceTracker(cls), functionName)
-  ) and
-  attr.accesses(self, functionName)
-}
-
-/**
- * Holds if `call` is a call to a method `target` on an instance or class, where the
- * instance or class is not derived from an implicit `self`/`cls` argument to a method
- * -- for that, see `callWithinMethodImplicitSelfOrCls`.
- *
- * It is found by making an attribute read `attr` with the name `functionName` on a
- * reference to the class `cls`, or to an instance of the class `cls`. The reference the
- * attribute-read is made on is `self`.
- */
-pragma[noinline]
-private predicate directCall(
-  CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
-) {
-  target = findFunctionAccordingToMroKnownStartingClass(cls, cls, functionName) and
-  directCall_join(call, functionName, cls, attr, self)
-}
-
-/** Extracted to give good join order */
-pragma[noinline]
-private predicate callWithinMethodImplicitSelfOrCls_join(
-  CallNode call, string functionName, Class methodWithinClass, AttrRead attr, Node self
-) {
-  (
-    call.getFunction() = clsAttrTracker(attr).asCfgNode() and
-    attr.accesses(clsTracker(methodWithinClass), functionName)
-    or
-    call.getFunction() = selfAttrTracker(attr).asCfgNode() and
-    attr.accesses(selfTracker(methodWithinClass), functionName)
-  ) and
-  attr.accesses(self, functionName)
-}
-
-/**
- * Holds if `call` is a call to a method `target` derived from an implicit `self`/`cls`
- * argument to a method within the class `methodWithinClass`.
- *
- * It is found by making an attribute read `attr` with the name `functionName` on a
- * reference to an implicit `self`/`cls` argument. The reference the attribute-read is
- * made on is `self`.
- */
-pragma[noinline]
-private predicate callWithinMethodImplicitSelfOrCls(
-  CallNode call, Function target, string functionName, Class methodWithinClass, AttrRead attr,
-  Node self
-) {
-  target = findFunctionAccordingToMro(getADirectSubclass*(methodWithinClass), functionName) and
-  callWithinMethodImplicitSelfOrCls_join(call, functionName, methodWithinClass, attr, self)
-}
-
-/** Extracted to give good join order */
-pragma[noinline]
-private predicate fromSuper_join(
-  CallNode call, string functionName, Class classUsedInSuper, AttrRead attr, Node self
-) {
-  call.getFunction() = superCallAttrTracker(attr).asCfgNode() and
-  (
-    exists(Function func |
-      attr.accesses(superCallNoArgumentTracker(func), functionName) and
-      // Requiring enclosing scope of function to be a class is a little too
-      // restrictive, since it is possible to use `super()` in a function defined inside
-      // the method, where the first argument to the nested-function will be used as
-      // implicit self argument. In practice I don't expect this to be a problem, and we
-      // did not support this with points-to either.
-      func.getEnclosingScope() = classUsedInSuper and
-      self.(ParameterNode).getParameter() = func.getArg(0)
-    )
-    or
-    attr.accesses(superCallTwoArgumentTracker(classUsedInSuper, self), functionName)
-  )
-}
-
-/**
- * Holds if `call` is a call to a method `target`, derived from a use of `super`, either
- * as:
- *
- * (1) `super(SomeClass, obj)`, where the first argument is a reference to the class
- * `classUsedInSuper`, and the second argument is `self`.
- *
- * (2) `super()`. This implicit version can only happen within a method in a class.
- * The implicit first argument is the class the call happens within `classUsedInSuper`.
- * The implicit second argument is the `self`/`cls` parameter of the method this happens
- * within.
- *
- * The method call is found by making an attribute read `attr` with the name
- * `functionName` on the return value from the `super` call.
- */
-pragma[noinline]
-predicate fromSuper(
-  CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
-  Node self
-) {
-  target = findFunctionAccordingToMro(getNextClassInMro(classUsedInSuper), functionName) and
-  fromSuper_join(call, functionName, classUsedInSuper, attr, self)
-}
-
-Function invokedFunctionFromClassConstruction(Class cls) {
-  result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__new__")
-  or
-  // as described in https://docs.python.org/3/reference/datamodel.html#object.__new__
-  // __init__ will only be called when __new__ returns an instance of the class (which
-  // is not a requirement). However, for simplicity, we assume that __init__ will always
-  // be called.
-  result = findFunctionAccordingToMroKnownStartingClass(cls, cls, "__init__")
-}
-
-/** Gets a viable run-time target for the call `call`. */
-DataFlowCallable viableCallable(DataFlowCall call) { result = call.getCallable() }
-
+// =============================================================================
+// Remaining required data-flow things
+// =============================================================================
 private newtype TReturnKind = TNormalReturnKind()
 
 /**

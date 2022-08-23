@@ -297,12 +297,8 @@ class ParameterNode extends CfgNode, LocalSourceNode {
 ParameterNode parameterNode(Parameter p) { result.getParameter() = p }
 
 /**
- * A data flow node that could be used as an argument in a call.
- *
- * To handle bound-methods, we treat the object of any attribute read as a `self`
- * argument, which makes this an overapproximation. If you only want nodes that are
- * guaranteed to be used in a call, check that `argumentOf` predicate has a result.
- * (This is not allowed in the char-pred, since it leads to non-monotonic recursion)
+ * A data flow node that represents an argument in a call, where the call can be
+ * resolved.
  */
 class ArgumentNode extends Node {
   ArgumentNode() { getCallArg(_, _, _, this, _) }
