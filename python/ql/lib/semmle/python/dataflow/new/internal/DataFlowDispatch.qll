@@ -546,76 +546,16 @@ Function findFunctionAccordingToMroKnownStartingClass(Class startingClass, strin
 // =============================================================================
 // attribute trackers
 // =============================================================================
-// TODO: need to explain why we have these attrTrackers
-private TypeTrackingNode classAttrTracker(TypeTracker t, AttrRead attr) {
+/** Gets a reference to the attribute read `attr` */
+private TypeTrackingNode attrReadTracker(TypeTracker t, AttrRead attr) {
   t.start() and
-  attr.getObject() = classTracker(_) and
   result = attr
   or
-  exists(TypeTracker t2 | result = classAttrTracker(t2, attr).track(t2, t))
+  exists(TypeTracker t2 | result = attrReadTracker(t2, attr).track(t2, t))
 }
 
-Node classAttrTracker(AttrRead attr) { classAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
-
-// TODO: need to explain why we have these attrTrackers
-private TypeTrackingNode classInstanceAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  attr.getObject() = classInstanceTracker(_) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = classInstanceAttrTracker(t2, attr).track(t2, t))
-}
-
-Node classInstanceAttrTracker(AttrRead attr) {
-  classInstanceAttrTracker(TypeTracker::end(), attr).flowsTo(result)
-}
-
-// TODO: need to explain why we have these attrTrackers
-private TypeTrackingNode selfAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  attr.getObject() = selfTracker(_) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = selfAttrTracker(t2, attr).track(t2, t))
-}
-
-Node selfAttrTracker(AttrRead attr) { selfAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
-
-// TODO: need to explain why we have these attrTrackers
-private TypeTrackingNode clsAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  attr.getObject() = clsTracker(_) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = clsAttrTracker(t2, attr).track(t2, t))
-}
-
-Node clsAttrTracker(AttrRead attr) { clsAttrTracker(TypeTracker::end(), attr).flowsTo(result) }
-
-// TODO: need to explain why we have these attrTrackers
-/**
- * Gets a reference to an attribute lookup where the object is the result of a `super()`
- * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
- */
-private TypeTrackingNode superCallAttrTracker(TypeTracker t, AttrRead attr) {
-  t.start() and
-  (
-    attr.getObject() = superCallNoArgumentTracker(_)
-    or
-    attr.getObject() = superCallTwoArgumentTracker(_, _)
-  ) and
-  result = attr
-  or
-  exists(TypeTracker t2 | result = superCallAttrTracker(t2, attr).track(t2, t))
-}
-
-/**
- * Gets a reference to an attribute lookup where the object is the result of a `super()`
- * call captured by either `superCallNoArgumentTracker` or `superCallTwoArgumentTracker`
- */
-Node superCallAttrTracker(AttrRead attr) {
-  superCallAttrTracker(TypeTracker::end(), attr).flowsTo(result)
-}
+/** Gets a reference to the attribute read `attr` */
+Node attrReadTracker(AttrRead attr) { attrReadTracker(TypeTracker::end(), attr).flowsTo(result) }
 
 // =============================================================================
 // call and argument resolution
@@ -698,10 +638,10 @@ private module MethodCalls {
     CallNode call, string functionName, Class cls, AttrRead attr, Node self
   ) {
     (
-      call.getFunction() = classAttrTracker(attr).asCfgNode() and
+      call.getFunction() = attrReadTracker(attr).asCfgNode() and
       attr.accesses(classTracker(cls), functionName)
       or
-      call.getFunction() = classInstanceAttrTracker(attr).asCfgNode() and
+      call.getFunction() = attrReadTracker(attr).asCfgNode() and
       attr.accesses(classInstanceTracker(cls), functionName)
     ) and
     attr.accesses(self, functionName)
@@ -730,10 +670,10 @@ private module MethodCalls {
     CallNode call, string functionName, Class methodWithinClass, AttrRead attr, Node self
   ) {
     (
-      call.getFunction() = clsAttrTracker(attr).asCfgNode() and
+      call.getFunction() = attrReadTracker(attr).asCfgNode() and
       attr.accesses(clsTracker(methodWithinClass), functionName)
       or
-      call.getFunction() = selfAttrTracker(attr).asCfgNode() and
+      call.getFunction() = attrReadTracker(attr).asCfgNode() and
       attr.accesses(selfTracker(methodWithinClass), functionName)
     ) and
     attr.accesses(self, functionName)
@@ -768,7 +708,7 @@ private module MethodCalls {
   private predicate fromSuper_join(
     CallNode call, string functionName, Class classUsedInSuper, AttrRead attr, Node self
   ) {
-    call.getFunction() = superCallAttrTracker(attr).asCfgNode() and
+    call.getFunction() = attrReadTracker(attr).asCfgNode() and
     (
       exists(Function func |
         attr.accesses(superCallNoArgumentTracker(func), functionName) and
