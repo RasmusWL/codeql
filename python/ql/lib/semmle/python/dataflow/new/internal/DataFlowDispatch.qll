@@ -39,7 +39,8 @@ newtype TParameterPosition =
   /** Used for `self` in methods, and `cls` in classmethods. */
   TSelfParameterPosition() or
   TPositionalParameterPosition(int pos) { pos = any(Parameter p).getPosition() } or
-  TKeywordParameterPosition(string name) { name = any(Parameter p).getName() }
+  TKeywordParameterPosition(string name) { name = any(Parameter p).getName() } or
+  TDictSplatParameterPosition()
 
 /** A parameter position. */
 class ParameterPosition extends TParameterPosition {
@@ -52,6 +53,9 @@ class ParameterPosition extends TParameterPosition {
   /** Holds if this position represents a keyword parameter named `name`. */
   predicate isKeyword(string name) { this = TKeywordParameterPosition(name) }
 
+  /** Holds if this position represents a `**kwargs` parameter. */
+  predicate isDictSplat() { this = TDictSplatParameterPosition() }
+
   /** Gets a textual representation of this element. */
   string toString() {
     this.isSelf() and result = "self"
@@ -59,6 +63,8 @@ class ParameterPosition extends TParameterPosition {
     exists(int index | this.isPositional(index) and result = "position " + index)
     or
     exists(string name | this.isKeyword(name) and result = "keyword " + name)
+    or
+    this.isDictSplat() and result = "**"
   }
 }
 
@@ -66,7 +72,8 @@ newtype TArgumentPosition =
   /** Used for `self` in methods, and `cls` in classmethods. */
   TSelfArgumentPosition() or
   TPositionalArgumentPosition(int pos) { exists(any(CallNode c).getArg(pos)) } or
-  TKeywordArgumentPosition(string name) { exists(any(CallNode c).getArgByName(name)) }
+  TKeywordArgumentPosition(string name) { exists(any(CallNode c).getArgByName(name)) } or
+  TDictSplatArgumentPosition()
 
 /** An argument position. */
 class ArgumentPosition extends TArgumentPosition {
@@ -79,6 +86,9 @@ class ArgumentPosition extends TArgumentPosition {
   /** Holds if this position represents a keyword argument named `name`. */
   predicate isKeyword(string name) { this = TKeywordArgumentPosition(name) }
 
+  /** Holds if this position represents a `**kwargs` argument. */
+  predicate isDictSplat() { this = TDictSplatArgumentPosition() }
+
   /** Gets a textual representation of this element. */
   string toString() {
     this.isSelf() and result = "self"
@@ -86,6 +96,8 @@ class ArgumentPosition extends TArgumentPosition {
     exists(int pos | this.isPositional(pos) and result = "position " + pos)
     or
     exists(string name | this.isKeyword(name) and result = "keyword " + name)
+    or
+    this.isDictSplat() and result = "**"
   }
 }
 
@@ -97,6 +109,8 @@ predicate parameterMatch(ParameterPosition ppos, ArgumentPosition apos) {
   exists(int index | ppos.isPositional(index) and apos.isPositional(index))
   or
   exists(string name | ppos.isKeyword(name) and apos.isKeyword(name))
+  or
+  ppos.isDictSplat() and apos.isDictSplat()
 }
 
 // =============================================================================
@@ -160,6 +174,8 @@ abstract class DataFlowFunction extends DataFlowCallable, TFunction {
     exists(int index | ppos.isPositional(index) | result.getParameter() = func.getArg(index))
     or
     exists(string name | ppos.isKeyword(name) | result.getParameter() = func.getArgByName(name))
+    or
+    ppos.isDictSplat() and result.getParameter() = func.getKwarg()
   }
 }
 
@@ -845,6 +861,8 @@ private predicate normalCallArg(CallNode call, Node arg, ArgumentPosition apos) 
     apos.isKeyword(name) and
     arg.asCfgNode() = call.getArgByName(name)
   )
+  or
+  apos.isDictSplat() and arg.asCfgNode() = call.getKwargs()
 }
 
 /**
