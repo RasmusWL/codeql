@@ -103,7 +103,9 @@ newtype TNode =
   //
   // So for now we live with having these synthetic ORM nodes for _all_ classes, which
   // is a bit wasteful, but we don't think it will hurt too much.
-  TSyntheticOrmModelNode(Class cls)
+  TSyntheticOrmModelNode(Class cls) or
+  /** A synthetic node to capture keyword arguments that are passed to a `**kwargs` parameter. */
+  TSynthDictSplatArgumentNode(CallNode call) { exists(call.getArgByName(_)) }
 
 /** Helper for `Node::getEnclosingCallable`. */
 private DataFlowCallable getCallableScope(Scope s) {

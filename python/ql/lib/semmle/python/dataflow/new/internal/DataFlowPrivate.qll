@@ -54,6 +54,33 @@ class SyntheticPreUpdateNode extends Node, TSyntheticPreUpdateNode {
 }
 
 /**
+ * A (synthetic) data-flow node that represents all keyword arguments, as if they had
+ * been passed in a `**kwargs` argument.
+ */
+class SynthDictSplatArgumentNode extends Node, TSynthDictSplatArgumentNode {
+  CallNode node;
+
+  SynthDictSplatArgumentNode() { this = TSynthDictSplatArgumentNode(node) }
+
+  override string toString() { result = "SynthDictSplatArgumentNode" }
+
+  override Scope getScope() { result = node.getScope() }
+
+  override Location getLocation() { result = node.getLocation() }
+}
+
+private predicate synthDictSplatArgumentNodeStoreStep(
+  ArgumentNode nodeFrom, DictionaryElementContent c, SynthDictSplatArgumentNode nodeTo
+) {
+  exists(string name, CallNode call, ArgumentPosition keywordPos |
+    nodeTo = TSynthDictSplatArgumentNode(call) and
+    getCallArg(call, _, _, nodeFrom, keywordPos) and
+    keywordPos.isKeyword(name) and
+    c.getKey() = name
+  )
+}
+
+/**
  * Ensures that the a `**kwargs` parameter will not contain elements with names of
  * keyword parameters.
  *
@@ -401,6 +428,8 @@ predicate storeStep(Node nodeFrom, Content c, Node nodeTo) {
   matchStoreStep(nodeFrom, c, nodeTo)
   or
   any(Orm::AdditionalOrmSteps es).storeStep(nodeFrom, c, nodeTo)
+  or
+  synthDictSplatArgumentNodeStoreStep(nodeFrom, c, nodeTo)
 }
 
 /**
@@ -719,7 +748,7 @@ int accessPathLimit() { result = 5 }
 predicate forceHighPrecision(Content c) { none() }
 
 /** Holds if `n` should be hidden from path explanations. */
-predicate nodeIsHidden(Node n) { none() }
+predicate nodeIsHidden(Node n) { n instanceof SynthDictSplatArgumentNode }
 
 class LambdaCallKind = Unit;
 
