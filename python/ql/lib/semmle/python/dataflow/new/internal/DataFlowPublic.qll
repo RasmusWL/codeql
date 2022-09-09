@@ -63,7 +63,7 @@ newtype TNode =
     exists(Class cls, Function func, ParameterDefinition def |
       func = cls.getAMethod() and
       not hasStaticmethodDecorator(func) and
-      // this matches what we do in ParameterNode
+      // this matches what we do in NormalParameterNode
       def.getDefiningNode() = node and
       def.getParameter() = func.getArg(0)
     )
@@ -105,7 +105,11 @@ newtype TNode =
   // is a bit wasteful, but we don't think it will hurt too much.
   TSyntheticOrmModelNode(Class cls) or
   /** A synthetic node to capture keyword arguments that are passed to a `**kwargs` parameter. */
-  TSynthDictSplatArgumentNode(CallNode call) { exists(call.getArgByName(_)) }
+  TSynthDictSplatArgumentNode(CallNode call) { exists(call.getArgByName(_)) } or
+  /** A synthetic node to allow flow to keyword parameters from a `**kwargs` argument. */
+  TSynthDictSplatParameterNode(DataFlowCallable callable) {
+    exists(ParameterPosition ppos | ppos.isKeyword(_) | exists(callable.getParameter(ppos)))
+  }
 
 /** Helper for `Node::getEnclosingCallable`. */
 private DataFlowCallable getCallableScope(Scope s) {
@@ -282,20 +286,9 @@ ExprNode exprNode(DataFlowExpr e) { result.getNode().getNode() = e }
  * The value of a parameter at function entry, viewed as a node in a data
  * flow graph.
  */
-class ParameterNode extends CfgNode, LocalSourceNode {
-  ParameterDefinition def;
-
-  ParameterNode() { node = def.getDefiningNode() }
-
-  /**
-   * Holds if this node is the parameter of callable `c` at the
-   * position `ppos`.
-   */
-  predicate isParameterOf(DataFlowCallable c, ParameterPosition ppos) {
-    this = c.getParameter(ppos)
-  }
-
-  Parameter getParameter() { result = def.getParameter() }
+class ParameterNode extends Node instanceof ParameterNodeImpl {
+  /** Gets the parameter corresponding to this node, if any. */
+  final Parameter getParameter() { result = super.getParameter() }
 }
 
 /** Gets a node corresponding to parameter `p`. */

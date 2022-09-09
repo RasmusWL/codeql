@@ -176,6 +176,8 @@ abstract class DataFlowFunction extends DataFlowCallable, TFunction {
     exists(string name | ppos.isKeyword(name) | result.getParameter() = func.getArgByName(name))
     or
     ppos.isDictSplat() and result.getParameter() = func.getKwarg()
+    or
+    ppos.isDictSplat() and result = TSynthDictSplatParameterNode(this)
   }
 }
 

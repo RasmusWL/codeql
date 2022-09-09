@@ -21,7 +21,7 @@ import DataFlowDispatch
 DataFlowCallable nodeGetEnclosingCallable(Node n) { result = n.getEnclosingCallable() }
 
 /** Holds if `p` is a `ParameterNode` of `c` with position `pos`. */
-predicate isParameterNode(ParameterNode p, DataFlowCallable c, ParameterPosition pos) {
+predicate isParameterNode(ParameterNodeImpl p, DataFlowCallable c, ParameterPosition pos) {
   p.isParameterOf(c, pos)
 }
 
@@ -38,6 +38,9 @@ predicate isArgumentNode(ArgumentNode arg, DataFlowCall c, ArgumentPosition pos)
 //--------
 predicate isExpressionNode(ControlFlowNode node) { node.getNode() instanceof Expr }
 
+// =============================================================================
+// SyntheticPreUpdateNode
+// =============================================================================
 class SyntheticPreUpdateNode extends Node, TSyntheticPreUpdateNode {
   CallNode node;
 
@@ -53,6 +56,42 @@ class SyntheticPreUpdateNode extends Node, TSyntheticPreUpdateNode {
   override Location getLocation() { result = node.getLocation() }
 }
 
+// =============================================================================
+// ParameterNodeImpl
+// =============================================================================
+/**
+ * A data-flow node for a parameter.
+ *
+ * This class exists since we didn't want the exposed `ParameterNode` to be an abstract class.
+ */
+abstract class ParameterNodeImpl extends Node {
+  /** Gets the parameter corresponding to this node, if any. */
+  abstract Parameter getParameter();
+
+  /**
+   * Holds if this node is the parameter of callable `c` at the
+   * position `ppos`.
+   */
+  predicate isParameterOf(DataFlowCallable c, ParameterPosition ppos) {
+    this = c.getParameter(ppos)
+  }
+}
+
+/**
+ * The value of a parameter at function entry, viewed as a node in a data
+ * flow graph.
+ */
+class NormalParameterNode extends CfgNode, ParameterNodeImpl {
+  ParameterDefinition def;
+
+  NormalParameterNode() { node = def.getDefiningNode() }
+
+  override Parameter getParameter() { result = def.getParameter() }
+}
+
+// =============================================================================
+// **kwargs (DictSplat) related
+// =============================================================================
 /**
  * A (synthetic) data-flow node that represents all keyword arguments, as if they had
  * been passed in a `**kwargs` argument.
@@ -97,11 +136,70 @@ private predicate dictSplatParameterNodeClearStep(ParameterNode n, DictionaryEle
   exists(DataFlowCallable callable, ParameterPosition dictSplatPos, ParameterPosition keywordPos |
     dictSplatPos.isDictSplat() and
     n = callable.getParameter(dictSplatPos) and
+    not n instanceof SynthDictSplatParameterNode and
     exists(callable.getParameter(keywordPos)) and
     keywordPos.isKeyword(c.getKey())
   )
 }
 
+/**
+ * A synthetic data-flow node to allow flow to keyword parameters from a `**kwargs` argument.
+ *
+ * Take the code snippet below as an example. Since the call only has a `**kwargs` argument,
+ * with a `**` argument position, we add this synthetic parameter node with `**` parameter position,
+ * and a read step to the `p1` parameter.
+ *
+ * ```py
+ * def foo(p1): ...
+ *
+ * kwargs = {"p1": 42}
+ * foo(**kwargs)
+ * ```
+ *
+ *
+ * Note that this will introduce a bit of redundancy in cases like
+ *
+ * ```py
+ * foo(p1=taint(1), p2=taint(2))
+ * ```
+ *
+ * where direct keyword matching is possible, since we construct a synthesized dict
+ * splat argument (`SynthDictSplatArgumentNode`) at the call site, which means that
+ * `taint(1)` will flow into `p1` both via normal keyword matching and via the synthesized
+ * nodes (and similarly for `p2`). However, this redundancy is OK since
+ *  (a) it means that type-tracking through keyword arguments also works in most cases,
+ *  (b) read/store steps can be avoided when direct keyword matching is possible, and
+ *      hence access path limits are not a concern, and
+ *  (c) since the synthesized nodes are hidden, the reported data-flow paths will be
+ *      collapsed anyway.
+ */
+class SynthDictSplatParameterNode extends ParameterNodeImpl, TSynthDictSplatParameterNode {
+  DataFlowCallable callable;
+
+  SynthDictSplatParameterNode() { this = TSynthDictSplatParameterNode(callable) }
+
+  override string toString() { result = "SynthDictSplatParameterNode" }
+
+  override Scope getScope() { result = callable.getScope() }
+
+  override Location getLocation() { result = callable.getLocation() }
+
+  override Parameter getParameter() { none() }
+}
+
+predicate synthDictSplatParameterNodeReadStep(
+  SynthDictSplatParameterNode nodeFrom, DictionaryElementContent c, ParameterNode nodeTo
+) {
+  exists(DataFlowCallable callable, ParameterPosition ppos |
+    nodeFrom = TSynthDictSplatParameterNode(callable) and
+    nodeTo = callable.getParameter(ppos) and
+    ppos.isKeyword(c.getKey())
+  )
+}
+
+// =============================================================================
+// PostUpdateNode
+// =============================================================================
 abstract class PostUpdateNodeImpl extends Node {
   /** Gets the node before the state update. */
   abstract Node getPreUpdateNode();
@@ -597,6 +695,8 @@ predicate readStep(Node nodeFrom, Content c, Node nodeTo) {
   forReadStep(nodeFrom, c, nodeTo)
   or
   attributeReadStep(nodeFrom, c, nodeTo)
+  or
+  synthDictSplatParameterNodeReadStep(nodeFrom, c, nodeTo)
 }
 
 /** Data flows from a sequence to a subscript of the sequence. */
@@ -748,7 +848,11 @@ int accessPathLimit() { result = 5 }
 predicate forceHighPrecision(Content c) { none() }
 
 /** Holds if `n` should be hidden from path explanations. */
-predicate nodeIsHidden(Node n) { n instanceof SynthDictSplatArgumentNode }
+predicate nodeIsHidden(Node n) {
+  n instanceof SynthDictSplatArgumentNode
+  or
+  n instanceof SynthDictSplatParameterNode
+}
 
 class LambdaCallKind = Unit;
 
