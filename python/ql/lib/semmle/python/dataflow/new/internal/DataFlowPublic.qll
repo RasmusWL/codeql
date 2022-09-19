@@ -104,6 +104,10 @@ newtype TNode =
   // So for now we live with having these synthetic ORM nodes for _all_ classes, which
   // is a bit wasteful, but we don't think it will hurt too much.
   TSyntheticOrmModelNode(Class cls) or
+  /** A synthetic node to capture positional arguments that are passed to a `*args` parameter. */
+  TSynthStarArgsElementParameterNode(DataFlowCallable callable) {
+    exists(ParameterPosition ppos | ppos.isStarArgs(_) | exists(callable.getParameter(ppos)))
+  } or
   /** A synthetic node to capture keyword arguments that are passed to a `**kwargs` parameter. */
   TSynthDictSplatArgumentNode(CallNode call) { exists(call.getArgByName(_)) } or
   /** A synthetic node to allow flow to keyword parameters from a `**kwargs` argument. */
