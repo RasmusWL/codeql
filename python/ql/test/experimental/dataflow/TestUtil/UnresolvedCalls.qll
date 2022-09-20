@@ -13,6 +13,7 @@ class UnresolvedCallExpectations extends InlineExpectationsTest {
     exists(location.getFile().getRelativePath()) and
     exists(CallNode call |
       not exists(DataFlowPrivate::DataFlowCall dfc | dfc.getNode() = call) and
+      not DataFlowPrivate::resolveClassCall(call, _) and
       not call = API::builtin(_).getACall().asCfgNode() and
       location = call.getLocation() and
       tag = "unresolved_call" and
