@@ -16,8 +16,8 @@ Folder projectRoot() { result.getRelativePath() = "" }
 /** A file we ignore because it is a test file, part of a third-party library, or compiled/generated/bundled code. */
 class IgnoredFile extends File {
   IgnoredFile() {
-    any(TestScope ts).getLocation().getFile() = this
-    or
+    // any(TestScope ts).getLocation().getFile() = this
+    // or
     this instanceof GeneratedFile
     or
     // outside source root (inspired by `Scope.inSource`)

@@ -120,8 +120,8 @@ module Stages {
       1 = 1
       or
       exists(any(NewDataFlow::TypeTracker t).append(_))
-      or
-      exists(any(API::Node n).getAMember().getAValueReachableFromSource())
+      // or
+      // exists(any(API::Node n).getAMember().getAValueReachableFromSource())
     }
   }
 

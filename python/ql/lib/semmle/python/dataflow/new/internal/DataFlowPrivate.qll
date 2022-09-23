@@ -10,7 +10,7 @@ private import semmle.python.dataflow.new.internal.ImportStar
 // global steps in some configurations.
 //
 // This matches behavior in C#.
-private import semmle.python.Frameworks
+// private import semmle.python.Frameworks
 // part of the implementation for this module has been spread over multiple files to
 // make it more digestible.
 import MatchUnpacking
