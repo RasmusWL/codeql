@@ -1,6 +1,5 @@
 /**
  * @name New call graph edge from using type-tracking instead of points-to
- * @kind problem
  * @problem.severity recommendation
  * @id py/meta/call-graph-new
  * @tags meta
@@ -10,9 +9,10 @@
 import python
 import CallGraphQuality
 
-from CallNode call, Target target
+// in the `hist` function of plotting/_core.py a SINGLE call goes to 177 targets, that are all WRONG :|
+// maybe I need to disable that flow into self parameter anyway :D
+from CallNode call, int c
 where
-  target.isRelevant() and
-  not call.(PointsToBasedCallGraph::ResolvableCall).getTarget() = target and
-  call.(TypeTrackingBasedCallGraph::ResolvableCall).getTarget() = target
-select call, "NEW: $@ to $@", call, "Call", target, target.toString()
+  c = strictcount(Target target | call.(TypeTrackingBasedCallGraph::ResolvableCall).getTarget() = target) and
+  c > 50
+select call, c order by c desc
