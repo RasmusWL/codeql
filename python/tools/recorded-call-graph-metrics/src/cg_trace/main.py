@@ -103,6 +103,7 @@ def main(args=None) -> int:
                 "exit_status": exit_status,
                 "elapsed": elapsed_formatted,
                 "utctimestamp": datetime.utcnow().replace(microsecond=0).isoformat(),
+                "python_version": sys.version.split(" ")[0],
             },
         )
     else:

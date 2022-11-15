@@ -5,6 +5,7 @@
     <exit_status>completed</exit_status>
     <elapsed>0.00 seconds</elapsed>
     <utctimestamp>2020-07-22T12:14:02</utctimestamp>
+    <python_version>3.7.12</python_version>
   </info>
   <recorded_calls>
     <recorded_call>
