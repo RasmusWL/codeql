@@ -1,5 +1,5 @@
 import lib.RecordedCalls
 
-from IdentifiedRecordedCall rc
-where not rc instanceof PointsToBasedCallGraph::ResolvableRecordedCall
+from RelevantRecordedCall rc
+where not pointsToResolved(rc, _, _, _)
 select rc, rc.getACall()

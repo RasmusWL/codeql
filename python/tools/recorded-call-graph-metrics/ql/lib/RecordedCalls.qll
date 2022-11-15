@@ -253,39 +253,37 @@ class IgnoredRecordedCall extends XmlRecordedCall {
   }
 }
 
-/** Provides classes for call-graph resolution by using points-to. */
-module PointsToBasedCallGraph {
-  /** An IdentifiedRecordedCall that can be resolved with points-to */
-  class ResolvableRecordedCall extends IdentifiedRecordedCall {
-    Value calleeValue;
-
-    ResolvableRecordedCall() {
-      exists(Call call, XmlCallee xmlCallee |
-        call = this.getACall() and
-        calleeValue.getACall() = call.getAFlowNode() and
-        xmlCallee = this.getXmlCallee() and
-        (
-          xmlCallee instanceof XmlPythonCallee and
-          (
-            // normal function
-            calleeValue.(PythonFunctionValue).getScope() = xmlCallee.(XmlPythonCallee).getACallee()
-            or
-            // class instantiation -- points-to says the call goes to the class
-            calleeValue.(ClassValue).lookup("__init__").(PythonFunctionValue).getScope() =
-              xmlCallee.(XmlPythonCallee).getACallee()
-          )
-          or
-          xmlCallee instanceof XmlExternalCallee and
-          calleeValue.(BuiltinFunctionObjectInternal).getBuiltin() =
-            xmlCallee.(XmlExternalCallee).getACallee()
-          or
-          xmlCallee instanceof XmlExternalCallee and
-          calleeValue.(BuiltinMethodObjectInternal).getBuiltin() =
-            xmlCallee.(XmlExternalCallee).getACallee()
-        )
-      )
-    }
-
-    Value getCalleeValue() { result = calleeValue }
+/** A relevant call, defined as: Identified uniquely to a call->function edge, and not ignored. */
+class RelevantRecordedCall extends IdentifiedRecordedCall {
+  RelevantRecordedCall() {
+    not this instanceof IgnoredRecordedCall and
+    exists(this.getAPythonCallee()) and
+    not exists(this.getABuiltinCallee())
   }
+}
+
+predicate pointsToResolved(
+  RelevantRecordedCall xmlCall, Call call, Function callee, Value calleeValue
+) {
+  call = xmlCall.getACall() and
+  calleeValue.getACall() = call.getAFlowNode() and
+  (
+    callee = xmlCall.getAPythonCallee() and
+    (
+      // normal function
+      calleeValue.(PythonFunctionValue).getScope() = callee
+      or
+      // class instantiation -- points-to says the call goes to the class
+      calleeValue.(ClassValue).lookup("__init__").(PythonFunctionValue).getScope() = callee
+    )
+    // commented out, since we don't even try to resolve calls to builtins with
+    // the new type-tracking based call-graph... So for comparison, this is not needed!
+    //
+    // or
+    // callee = none() and
+    // calleeValue.(BuiltinFunctionObjectInternal).getBuiltin() = xmlCall.getABuiltinCallee()
+    // or
+    // callee = none() and
+    // calleeValue.(BuiltinMethodObjectInternal).getBuiltin() = xmlCall.getABuiltinCallee()
+  )
 }
