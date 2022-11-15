@@ -287,3 +287,21 @@ predicate pointsToResolved(
     // calleeValue.(BuiltinMethodObjectInternal).getBuiltin() = xmlCall.getABuiltinCallee()
   )
 }
+
+module TypeTrackingBasedCallGraph {
+  private import semmle.python.dataflow.new.internal.DataFlowDispatch
+
+  predicate typeTrackingResolved(
+    RelevantRecordedCall xmlCall, Call call, Function callee, DataFlowCallable dfCallable
+  ) {
+    exists(DataFlowCall dfc |
+      call = xmlCall.getACall() and
+      dfc.getNode() = call.getAFlowNode() and
+      dfCallable = viableCallable(dfc) and
+      callee = xmlCall.getAPythonCallee() and
+      callee = dfCallable.getScope()
+    )
+  }
+}
+
+import TypeTrackingBasedCallGraph
