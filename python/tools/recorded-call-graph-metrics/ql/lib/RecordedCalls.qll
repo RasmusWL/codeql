@@ -77,6 +77,7 @@ class XmlCall extends XmlElement {
   }
 
   /** Holds if `expr` can be fully matched with `bytecode`. */
+  cached
   private predicate matchBytecodeExpr(Expr expr, XmlBytecodeExpr bytecode) {
     exists(Call parent_call, XmlBytecodeCall parent_bytecode_call |
       parent_call
@@ -166,7 +167,7 @@ deprecated class XMLExternalCallee = XmlExternalCallee;
 
 /**
  * Helper predicate. If parent = `builtins` and qualname = `list.append`, it will
- * return the result of `builtins.list.append`.class
+ * return the result of `builtins.list.append`.
  */
 private Builtin traverse_qualname(Builtin parent, string qualname) {
   not qualname = "__objclass__" and
