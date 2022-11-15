@@ -46,7 +46,8 @@ As an example, compare the [`tox.ini`](https://github.com/pallets/flask/blob/21c
 
 ### Setup
 
-1. Ensure you have at least Python 3.7
+1. Ensure you have at least Python 3.7 -- this codebase was developed against Python
+   3.8, so results may vary if you use something else.
 
 2. Create virtual environment `python3 -m venv venv` and activate it
 
