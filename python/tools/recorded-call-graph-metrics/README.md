@@ -50,7 +50,7 @@ As an example, compare the [`tox.ini`](https://github.com/pallets/flask/blob/21c
 
 2. Create virtual environment `python3 -m venv venv` and activate it
 
-3. Install dependencies `pip install -r --upgrade requirements.txt`
+3. Install dependencies `pip install --upgrade -r requirements.txt`
 
 4. Install this codebase as an editable package `pip install -e .`
 
