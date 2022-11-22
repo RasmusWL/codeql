@@ -22,39 +22,64 @@ private module Asymmetric {
   private module NonEllipticCurve {
     /** A source for an insufficient key size used in RSA, DSA, and DH algorithms. */
     private class Source extends InsufficientKeySizeSource {
-      Source() { this.asExpr().(IntegerLiteral).getIntValue() < getMinKeySize() }
+      Source() { this.asExpr().(IntegerLiteral).getIntValue() < getMinKeySize(_) }
 
-      override predicate hasState(DataFlow::FlowState state) { state = getMinKeySize().toString() }
+      override predicate hasState(DataFlow::FlowState state) {
+        state = this.asExpr().(IntegerLiteral).getIntValue().toString()
+      }
     }
 
     /** A sink for an insufficient key size used in RSA, DSA, and DH algorithms. */
     private class Sink extends InsufficientKeySizeSink {
+      string algoName;
+
       Sink() {
         exists(KeyPairGenInit kpgInit, KeyPairGen kpg |
-          kpg.getAlgoName().matches(["RSA", "DSA", "DH"]) and
+          algoName in ["RSA", "DSA", "DH"] and
+          kpg.getAlgoName().matches(algoName) and
           DataFlow::localExprFlow(kpg, kpgInit.getQualifier()) and
           this.asExpr() = kpgInit.getKeySizeArg()
         )
         or
-        exists(Spec spec | this.asExpr() = spec.getKeySizeArg())
+        exists(Spec spec | this.asExpr() = spec.getKeySizeArg() and algoName = spec.getAlgoName())
       }
 
-      override predicate hasState(DataFlow::FlowState state) { state = getMinKeySize().toString() }
+      override predicate hasState(DataFlow::FlowState state) {
+        state = getMinKeySize(algoName).toString()
+      }
     }
 
     /** Returns the minimum recommended key size for RSA, DSA, and DH algorithms. */
-    private int getMinKeySize() { result = minSecureKeySizeAsymmetricNonEc() }
+    private int getMinKeySize(string algoName) {
+      algoName = "RSA" and
+      result = minSecureKeySizeRsa()
+      or
+      algoName = "DSA" and
+      result = minSecureKeySizeDsa()
+      or
+      algoName = "DH" and
+      result = minSecureKeySizeDh()
+    }
 
     /** An instance of an RSA, DSA, or DH algorithm specification. */
     private class Spec extends ClassInstanceExpr {
+      string algoName;
+
       Spec() {
-        this.getConstructedType() instanceof RsaKeyGenParameterSpec or
-        this.getConstructedType() instanceof DsaGenParameterSpec or
-        this.getConstructedType() instanceof DhGenParameterSpec
+        this.getConstructedType() instanceof RsaKeyGenParameterSpec and
+        algoName = "RSA"
+        or
+        this.getConstructedType() instanceof DsaGenParameterSpec and
+        algoName = "DSA"
+        or
+        this.getConstructedType() instanceof DhGenParameterSpec and
+        algoName = "DH"
       }
 
       /** Gets the `keysize` argument of this instance. */
       Argument getKeySizeArg() { result = this.getArgument(0) }
+
+      string getAlgoName() { result = algoName }
     }
   }
 
