@@ -402,7 +402,9 @@ private Node update(Node node) {
 //--------
 // Type pruning
 //--------
-newtype TDataFlowType = TAnyFlow()
+private newtype TDataFlowType =
+  TTodoDataFlowType() or
+  TTodoDataFlowType2() // Add a dummy value to prevent bad functionality-induced joins arising from a type of size 1.
 
 class DataFlowType extends TDataFlowType {
   /** Gets a textual representation of this element. */
