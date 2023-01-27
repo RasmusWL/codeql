@@ -873,7 +873,7 @@ private module MethodCalls {
    * reference to the class `cls`, or to an instance of the class `cls`. The reference the
    * attribute-read is made on is `self`.
    */
-  pragma[nomagic]
+  pragma[noinline]
   private predicate directCall(
     CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
   ) {
@@ -882,7 +882,7 @@ private module MethodCalls {
   }
 
   /** Extracted to give good join order */
-  pragma[nomagic]
+  pragma[noinline]
   private predicate directCall_join(
     CallNode call, string functionName, Class cls, AttrRead attr, Node self
   ) {
@@ -899,7 +899,7 @@ private module MethodCalls {
    * reference to an implicit `self`/`cls` argument. The reference the attribute-read is
    * made on is `self`.
    */
-  pragma[nomagic]
+  pragma[noinline]
   private predicate callWithinMethodImplicitSelfOrCls(
     CallNode call, Function target, string functionName, Class classWithMethod, AttrRead attr,
     Node self
@@ -909,7 +909,7 @@ private module MethodCalls {
   }
 
   /** Extracted to give good join order */
-  pragma[nomagic]
+  pragma[noinline]
   private predicate callWithinMethodImplicitSelfOrCls_join(
     CallNode call, string functionName, Class classWithMethod, AttrRead attr, Node self
   ) {
@@ -943,7 +943,7 @@ private module MethodCalls {
    * The method call is found by making an attribute read `attr` with the name
    * `functionName` on the return value from the `super` call.
    */
-  pragma[nomagic]
+  pragma[noinline]
   predicate fromSuper(
     CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
     Node self
@@ -953,7 +953,7 @@ private module MethodCalls {
   }
 
   /** Extracted to give good join order */
-  pragma[nomagic]
+  pragma[noinline]
   private predicate fromSuper_join(
     CallNode call, string functionName, Class classUsedInSuper, AttrRead attr, Node self
   ) {
