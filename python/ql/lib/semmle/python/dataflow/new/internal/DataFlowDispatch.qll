@@ -314,6 +314,7 @@ abstract class DataFlowFunction extends DataFlowCallable, TFunction {
   /** Gets the positional parameter offset, to take into account self/cls parameters. */
   int positionalOffset() { result = 0 }
 
+  pragma[assume_small_delta]
   override ParameterNode getParameter(ParameterPosition ppos) {
     exists(int index | ppos.isPositional(index) |
       result.getParameter() = func.getArg(index + this.positionalOffset())
@@ -468,6 +469,7 @@ private CallCfgNode getSuperCall() {
 /**
  * Gets a reference to the function `func`.
  */
+pragma[assume_small_delta]
 private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
   t.start() and
   (
@@ -489,6 +491,7 @@ Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).
 /**
  * Gets a reference to the class `cls`.
  */
+pragma[assume_small_delta]
 private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
   t.start() and
   (
@@ -515,6 +518,7 @@ Node classTracker(Class cls) { classTracker(TypeTracker::end(), cls).flowsTo(res
 /**
  * Gets a reference to an instance of the class `cls`.
  */
+pragma[assume_small_delta]
 private TypeTrackingNode classInstanceTracker(TypeTracker t, Class cls) {
   t.start() and
   resolveClassCall(result.(CallCfgNode).asCfgNode(), cls)
@@ -541,6 +545,7 @@ Node classInstanceTracker(Class cls) {
  * Gets a reference to the `self` argument of a method on class `classWithMethod`.
  * The method cannot be a `staticmethod` or `classmethod`.
  */
+pragma[assume_small_delta]
 private TypeTrackingNode selfTracker(TypeTracker t, Class classWithMethod) {
   t.start() and
   exists(Function func |
@@ -568,6 +573,7 @@ Node selfTracker(Class classWithMethod) {
  * methods, either through the `cls` argument from a `classmethod` or from `type(self)`
  * from a normal method.
  */
+pragma[assume_small_delta]
 private TypeTrackingNode clsArgumentTracker(TypeTracker t, Class classWithMethod) {
   t.start() and
   (
@@ -600,6 +606,7 @@ Node clsArgumentTracker(Class classWithMethod) {
  * Gets a reference to the result of calling `super` without any argument, where the
  * call happened in the method `func` (either a method or a classmethod).
  */
+pragma[assume_small_delta]
 private TypeTrackingNode superCallNoArgumentTracker(TypeTracker t, Function func) {
   t.start() and
   not isStaticmethod(func) and
@@ -625,6 +632,7 @@ Node superCallNoArgumentTracker(Function func) {
  * Gets a reference to the result of calling `super` with 2 arguments, where the
  * first is a reference to the class `cls`, and the second argument is `obj`.
  */
+pragma[assume_small_delta]
 private TypeTrackingNode superCallTwoArgumentTracker(TypeTracker t, Class cls, Node obj) {
   t.start() and
   exists(CallCfgNode call | result = call |
@@ -653,6 +661,7 @@ Node superCallTwoArgumentTracker(Class cls, Node obj) {
  *
  * For `A` with the class definition `class A(B, C)` it will have results `B` and `C`.
  */
+pragma[assume_small_delta]
 Class getADirectSuperclass(Class cls) { cls.getABase() = classTracker(result).asExpr() }
 
 /**
@@ -696,6 +705,7 @@ Class getADirectSubclass(Class cls) { cls = getADirectSuperclass(result) }
  * - https://www.python.org/download/releases/2.3/mro/
  * - https://opendylan.org/_static/c3-linearization.pdf
  */
+pragma[assume_small_delta]
 private Class getNextClassInMro(Class cls) {
   // class A(B, ...):
   // `B` must be the next class after `A` in the MRO for A.
@@ -730,6 +740,7 @@ private Class getNextClassInMro(Class cls) {
  * Gets a potential definition of the function `name` according to our approximation of
  * MRO for the class `cls` (see `getNextClassInMro` for more information).
  */
+pragma[assume_small_delta]
 Function findFunctionAccordingToMro(Class cls, string name) {
   result = cls.getAMethod() and
   result.getName() = name
@@ -747,6 +758,7 @@ Function findFunctionAccordingToMro(Class cls, string name) {
  *
  * See QLDoc for `getNextClassInMro`.
  */
+pragma[assume_small_delta]
 Class getNextClassInMroKnownStartingClass(Class cls, Class startingClass) {
   cls.getBase(0) = classTracker(result).asExpr() and
   cls = getADirectSuperclass*(startingClass)
@@ -758,6 +770,7 @@ Class getNextClassInMroKnownStartingClass(Class cls, Class startingClass) {
   )
 }
 
+pragma[assume_small_delta]
 private Function findFunctionAccordingToMroKnownStartingClass(
   Class cls, Class startingClass, string name
 ) {
@@ -787,6 +800,7 @@ Function findFunctionAccordingToMroKnownStartingClass(Class startingClass, strin
 // attribute trackers
 // =============================================================================
 /** Gets a reference to the attribute read `attr` */
+pragma[assume_small_delta]
 private TypeTrackingNode attrReadTracker(TypeTracker t, AttrRead attr) {
   t.start() and
   result = attr and
@@ -873,6 +887,7 @@ private module MethodCalls {
    * reference to the class `cls`, or to an instance of the class `cls`. The reference the
    * attribute-read is made on is `self`.
    */
+  pragma[assume_small_delta]
   pragma[nomagic]
   private predicate directCall(
     CallNode call, Function target, string functionName, Class cls, AttrRead attr, Node self
@@ -882,6 +897,7 @@ private module MethodCalls {
   }
 
   /** Extracted to give good join order */
+  pragma[assume_small_delta]
   pragma[nomagic]
   private predicate directCall_join(
     CallNode call, string functionName, Class cls, AttrRead attr, Node self
@@ -899,6 +915,7 @@ private module MethodCalls {
    * reference to an implicit `self`/`cls` argument. The reference the attribute-read is
    * made on is `self`.
    */
+  pragma[assume_small_delta]
   pragma[nomagic]
   private predicate callWithinMethodImplicitSelfOrCls(
     CallNode call, Function target, string functionName, Class classWithMethod, AttrRead attr,
@@ -909,6 +926,7 @@ private module MethodCalls {
   }
 
   /** Extracted to give good join order */
+  pragma[assume_small_delta]
   pragma[nomagic]
   private predicate callWithinMethodImplicitSelfOrCls_join(
     CallNode call, string functionName, Class classWithMethod, AttrRead attr, Node self
@@ -923,6 +941,7 @@ private module MethodCalls {
    * resolve the call to a known target (since the only super class might be the
    * builtin `object`, so we never have the implementation of `__new__` in the DB).
    */
+  pragma[assume_small_delta]
   predicate fromSuperNewCall(CallNode call, Class classUsedInSuper, AttrRead attr, Node self) {
     fromSuper_join(call, "__new__", classUsedInSuper, attr, self) and
     self in [classTracker(_), clsArgumentTracker(_)]
@@ -943,6 +962,7 @@ private module MethodCalls {
    * The method call is found by making an attribute read `attr` with the name
    * `functionName` on the return value from the `super` call.
    */
+  pragma[assume_small_delta]
   pragma[nomagic]
   predicate fromSuper(
     CallNode call, Function target, string functionName, Class classUsedInSuper, AttrRead attr,
@@ -953,6 +973,7 @@ private module MethodCalls {
   }
 
   /** Extracted to give good join order */
+  pragma[assume_small_delta]
   pragma[nomagic]
   private predicate fromSuper_join(
     CallNode call, string functionName, Class classUsedInSuper, AttrRead attr, Node self
@@ -974,6 +995,7 @@ private module MethodCalls {
     )
   }
 
+  pragma[assume_small_delta]
   predicate resolveMethodCall(CallNode call, Function target, CallType type, Node self) {
     (
       directCall(call, target, _, _, _, self)
@@ -1021,6 +1043,7 @@ import MethodCalls
  * NOTE: We have this predicate mostly to be able to compare with old point-to
  * call-graph resolution. So it could be removed in the future.
  */
+pragma[assume_small_delta]
 predicate resolveClassCall(CallNode call, Class cls) {
   call.getFunction() = classTracker(cls).asCfgNode()
   or
@@ -1069,6 +1092,7 @@ predicate resolveClassInstanceCall(CallNode call, Function target, Node self) {
 /**
  * Holds if `call` is a call to the `target`, with call-type `type`.
  */
+pragma[assume_small_delta]
 cached
 predicate resolveCall(CallNode call, Function target, CallType type) {
   Stages::DataFlow::ref() and
@@ -1186,6 +1210,7 @@ predicate normalCallArg(CallNode call, Node arg, ArgumentPosition apos) {
  * time the bound method is used, such that the `clear()` call would essentially be
  * translated into `l.clear()`, and we can still have use-use flow.
  */
+pragma[assume_small_delta]
 cached
 predicate getCallArg(CallNode call, Function target, CallType type, Node arg, ArgumentPosition apos) {
   Stages::DataFlow::ref() and
