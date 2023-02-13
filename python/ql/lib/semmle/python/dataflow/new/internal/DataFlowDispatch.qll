@@ -480,17 +480,18 @@ private predicate ignoreForCallGraph(File f) {
  */
 private TypeTrackingNode functionTracker(TypeTracker t, Function func) {
   not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
   (
-    result.asExpr() = func.getDefinition()
+    t.start() and
+    (
+      result.asExpr() = func.getDefinition()
+      or
+      // when a function is decorated, it's the result of the (last) decorator call that
+      // is used
+      result.asExpr() = func.getDefinition().(FunctionExpr).getADecoratorCall()
+    )
     or
-    // when a function is decorated, it's the result of the (last) decorator call that
-    // is used
-    result.asExpr() = func.getDefinition().(FunctionExpr).getADecoratorCall()
+    exists(TypeTracker t2 | result = functionTracker(t2, func).track(t2, t))
   )
-  or
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  exists(TypeTracker t2 | result = functionTracker(t2, func).track(t2, t))
 }
 
 /**
@@ -503,22 +504,23 @@ Node functionTracker(Function func) { functionTracker(TypeTracker::end(), func).
  */
 private TypeTrackingNode classTracker(TypeTracker t, Class cls) {
   not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
   (
-    result.asExpr() = cls.getParent()
+    t.start() and
+    (
+      result.asExpr() = cls.getParent()
+      or
+      // when a class is decorated, it's the result of the (last) decorator call that
+      // is used
+      result.asExpr() = cls.getParent().getADecoratorCall()
+      or
+      // `type(obj)`, where obj is an instance of this class
+      result = getTypeCall() and
+      result.(CallCfgNode).getArg(0) = classInstanceTracker(cls)
+    )
     or
-    // when a class is decorated, it's the result of the (last) decorator call that
-    // is used
-    result.asExpr() = cls.getParent().getADecoratorCall()
-    or
-    // `type(obj)`, where obj is an instance of this class
-    result = getTypeCall() and
-    result.(CallCfgNode).getArg(0) = classInstanceTracker(cls)
+    exists(TypeTracker t2 | result = classTracker(t2, cls).track(t2, t)) and
+    not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
   )
-  or
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  exists(TypeTracker t2 | result = classTracker(t2, cls).track(t2, t)) and
-  not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
 }
 
 /**
@@ -531,20 +533,20 @@ Node classTracker(Class cls) { classTracker(TypeTracker::end(), cls).flowsTo(res
  */
 private TypeTrackingNode classInstanceTracker(TypeTracker t, Class cls) {
   not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
-  resolveClassCall(result.(CallCfgNode).asCfgNode(), cls)
-  or
-  // result of `super().__new__` as used in a `__new__` method implementation
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
-  exists(Class classUsedInSuper |
-    fromSuperNewCall(result.(CallCfgNode).asCfgNode(), classUsedInSuper, _, _) and
-    classUsedInSuper = getADirectSuperclass*(cls)
+  (
+    t.start() and
+    resolveClassCall(result.(CallCfgNode).asCfgNode(), cls)
+    or
+    // result of `super().__new__` as used in a `__new__` method implementation
+    t.start() and
+    exists(Class classUsedInSuper |
+      fromSuperNewCall(result.(CallCfgNode).asCfgNode(), classUsedInSuper, _, _) and
+      classUsedInSuper = getADirectSuperclass*(cls)
+    )
+    or
+    exists(TypeTracker t2 | result = classInstanceTracker(t2, cls).track(t2, t)) and
+    not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
   )
-  or
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  exists(TypeTracker t2 | result = classInstanceTracker(t2, cls).track(t2, t)) and
-  not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
 }
 
 /**
@@ -560,18 +562,19 @@ Node classInstanceTracker(Class cls) {
  */
 private TypeTrackingNode selfTracker(TypeTracker t, Class classWithMethod) {
   not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
-  exists(Function func |
-    func = classWithMethod.getAMethod() and
-    not isStaticmethod(func) and
-    not isClassmethod(func)
-  |
-    result.asExpr() = func.getArg(0)
+  (
+    t.start() and
+    exists(Function func |
+      func = classWithMethod.getAMethod() and
+      not isStaticmethod(func) and
+      not isClassmethod(func)
+    |
+      result.asExpr() = func.getArg(0)
+    )
+    or
+    exists(TypeTracker t2 | result = selfTracker(t2, classWithMethod).track(t2, t)) and
+    not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
   )
-  or
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  exists(TypeTracker t2 | result = selfTracker(t2, classWithMethod).track(t2, t)) and
-  not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
 }
 
 /**
@@ -589,23 +592,24 @@ Node selfTracker(Class classWithMethod) {
  */
 private TypeTrackingNode clsArgumentTracker(TypeTracker t, Class classWithMethod) {
   not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
   (
-    exists(Function func |
-      func = classWithMethod.getAMethod() and
-      isClassmethod(func)
-    |
-      result.asExpr() = func.getArg(0)
+    t.start() and
+    (
+      exists(Function func |
+        func = classWithMethod.getAMethod() and
+        isClassmethod(func)
+      |
+        result.asExpr() = func.getArg(0)
+      )
+      or
+      // type(self)
+      result = getTypeCall() and
+      result.(CallCfgNode).getArg(0) = selfTracker(classWithMethod)
     )
     or
-    // type(self)
-    result = getTypeCall() and
-    result.(CallCfgNode).getArg(0) = selfTracker(classWithMethod)
+    exists(TypeTracker t2 | result = clsArgumentTracker(t2, classWithMethod).track(t2, t)) and
+    not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
   )
-  or
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  exists(TypeTracker t2 | result = clsArgumentTracker(t2, classWithMethod).track(t2, t)) and
-  not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
 }
 
 /**
@@ -623,17 +627,18 @@ Node clsArgumentTracker(Class classWithMethod) {
  */
 private TypeTrackingNode superCallNoArgumentTracker(TypeTracker t, Function func) {
   not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
-  not isStaticmethod(func) and
-  exists(CallCfgNode call | result = call |
-    call = getSuperCall() and
-    not exists(call.getArg(_)) and
-    call.getScope() = func
+  (
+    t.start() and
+    not isStaticmethod(func) and
+    exists(CallCfgNode call | result = call |
+      call = getSuperCall() and
+      not exists(call.getArg(_)) and
+      call.getScope() = func
+    )
+    or
+    exists(TypeTracker t2 | result = superCallNoArgumentTracker(t2, func).track(t2, t)) and
+    not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
   )
-  or
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  exists(TypeTracker t2 | result = superCallNoArgumentTracker(t2, func).track(t2, t)) and
-  not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
 }
 
 /**
@@ -650,16 +655,17 @@ Node superCallNoArgumentTracker(Function func) {
  */
 private TypeTrackingNode superCallTwoArgumentTracker(TypeTracker t, Class cls, Node obj) {
   not ignoreForCallGraph(result.getLocation().getFile()) and
-  t.start() and
-  exists(CallCfgNode call | result = call |
-    call = getSuperCall() and
-    call.getArg(0) = classTracker(cls) and
-    call.getArg(1) = obj
+  (
+    t.start() and
+    exists(CallCfgNode call | result = call |
+      call = getSuperCall() and
+      call.getArg(0) = classTracker(cls) and
+      call.getArg(1) = obj
+    )
+    or
+    exists(TypeTracker t2 | result = superCallTwoArgumentTracker(t2, cls, obj).track(t2, t)) and
+    not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
   )
-  or
-  not ignoreForCallGraph(result.getLocation().getFile()) and
-  exists(TypeTracker t2 | result = superCallTwoArgumentTracker(t2, cls, obj).track(t2, t)) and
-  not result.(ParameterNodeImpl).isParameterOf(_, any(ParameterPosition pp | pp.isSelf()))
 }
 
 /**
