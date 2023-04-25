@@ -1,0 +1,17 @@
+name: Foo
+nested:
+  bar: Bar
+nullValue: null
+multiline:
+  literal: |
+    one
+    two
+      three
+  folded: >
+    one
+    two
+      three
+  nothing:
+    one
+    two
+      three
