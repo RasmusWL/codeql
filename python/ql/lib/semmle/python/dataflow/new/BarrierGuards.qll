@@ -71,3 +71,7 @@ deprecated class StringConstCompare extends DataFlow::BarrierGuard, CompareNode 
     node = checked_node and branch = safe_branch
   }
 }
+
+class StandardSanitizers extends DataFlow::Node {
+  StandardSanitizers() { this instanceof StringConstCompareBarrier }
+}
