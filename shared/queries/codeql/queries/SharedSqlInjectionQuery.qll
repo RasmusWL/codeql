@@ -1,16 +1,38 @@
 private import codeql.dataflow.DataFlow as DF
 private import codeql.dataflow.TaintTracking as TT
 
+signature module LangSig {
+  class Base {
+    string toString();
+  }
+}
+
+module SharedSqlExecution<LangSig L, DF::InputSig DataFlowLang> {
+  final class FinalBase = L::Base;
+
+  /** Extend this class with library modeling */
+  abstract class Range extends FinalBase {
+    abstract DataFlowLang::Node getSql();
+  }
+
+  /** Use this class in queries */
+  final class Concept = Range;
+}
+
+module SharedSqlConstruction<LangSig L, DF::InputSig DataFlowLang> {
+  final class FinalBase = L::Base;
+
+  /** Extend this class with library modeling */
+  abstract class Range extends FinalBase {
+    abstract DataFlowLang::Node getSql();
+  }
+
+  /** Use this class in queries */
+  final class Concept = Range;
+}
+
 signature module InputSig<DF::InputSig DataFlowLang> {
   class RemoteFlowSource extends DataFlowLang::Node;
-
-  class SqlExecution {
-    DataFlowLang::Node getSql();
-  }
-
-  class SqlConstruction {
-    DataFlowLang::Node getSql();
-  }
 
   class StandardSanitizers extends DataFlowLang::Node;
 
@@ -22,7 +44,7 @@ signature module InputSig<DF::InputSig DataFlowLang> {
 }
 
 module SqlInjectionQuery<
-  DF::InputSig DataFlowLang, TT::InputSig<DataFlowLang> TaintTrackingLang,
+  LangSig L, DF::InputSig DataFlowLang, TT::InputSig<DataFlowLang> TaintTrackingLang,
   InputSig<DataFlowLang> Input>
 {
   /**
@@ -36,9 +58,9 @@ module SqlInjectionQuery<
     }
 
     predicate isSink(DataFlowLang::Node sink) {
-      any(Input::SqlExecution e).getSql() = sink
+      any(SharedSqlExecution<L, DataFlowLang>::Concept e).getSql() = sink
       or
-      any(Input::SqlConstruction e).getSql() = sink
+      any(SharedSqlConstruction<L, DataFlowLang>::Concept e).getSql() = sink
       or
       Input::isExtraSink(sink)
     }

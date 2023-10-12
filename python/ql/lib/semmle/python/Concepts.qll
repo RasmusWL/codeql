@@ -10,6 +10,16 @@ private import semmle.python.dataflow.new.RemoteFlowSources
 private import semmle.python.dataflow.new.TaintTracking
 private import semmle.python.Frameworks
 private import semmle.python.security.internal.EncryptionKeySizes
+private import codeql.queries.SharedSqlInjectionQuery
+private import semmle.python.dataflow.new.internal.DataFlowImplSpecific::PythonDataFlow as PythonDataFlow
+
+module PythonLangSig implements LangSig {
+  class Base = DataFlow::Node;
+}
+
+module SqlExecution = SharedSqlExecution<PythonLangSig, PythonDataFlow>;
+
+module SqlConstruction = SharedSqlConstruction<PythonLangSig, PythonDataFlow>;
 
 /**
  * A data-flow node that executes an operating system command,
@@ -309,72 +319,6 @@ module CodeExecution {
   abstract class Range extends DataFlow::Node {
     /** Gets the argument that specifies the code to be executed. */
     abstract DataFlow::Node getCode();
-  }
-}
-
-/**
- * A data-flow node that constructs an SQL statement.
- *
- * Often, it is worthy of an alert if an SQL statement is constructed such that
- * executing it would be a security risk.
- *
- * If it is important that the SQL statement is indeed executed, then use `SqlExecution`.
- *
- * Extend this class to refine existing API models. If you want to model new APIs,
- * extend `SqlConstruction::Range` instead.
- */
-class SqlConstruction extends DataFlow::Node instanceof SqlConstruction::Range {
-  /** Gets the argument that specifies the SQL statements to be constructed. */
-  DataFlow::Node getSql() { result = super.getSql() }
-}
-
-/** Provides a class for modeling new SQL execution APIs. */
-module SqlConstruction {
-  /**
-   * A data-flow node that constructs an SQL statement.
-   *
-   * Often, it is worthy of an alert if an SQL statement is constructed such that
-   * executing it would be a security risk.
-   *
-   * If it is important that the SQL statement is indeed executed, then use `SqlExecution`.
-   *
-   * Extend this class to model new APIs. If you want to refine existing API models,
-   * extend `SqlConstruction` instead.
-   */
-  abstract class Range extends DataFlow::Node {
-    /** Gets the argument that specifies the SQL statements to be constructed. */
-    abstract DataFlow::Node getSql();
-  }
-}
-
-/**
- * A data-flow node that executes SQL statements.
- *
- * If the context of interest is such that merely constructing an SQL statement
- * would be valuable to report, then consider using `SqlConstruction`.
- *
- * Extend this class to refine existing API models. If you want to model new APIs,
- * extend `SqlExecution::Range` instead.
- */
-class SqlExecution extends DataFlow::Node instanceof SqlExecution::Range {
-  /** Gets the argument that specifies the SQL statements to be executed. */
-  DataFlow::Node getSql() { result = super.getSql() }
-}
-
-/** Provides a class for modeling new SQL execution APIs. */
-module SqlExecution {
-  /**
-   * A data-flow node that executes SQL statements.
-   *
-   * If the context of interest is such that merely constructing an SQL statement
-   * would be valuable to report, then consider using `SqlConstruction`.
-   *
-   * Extend this class to model new APIs. If you want to refine existing API models,
-   * extend `SqlExecution` instead.
-   */
-  abstract class Range extends DataFlow::Node {
-    /** Gets the argument that specifies the SQL statements to be executed. */
-    abstract DataFlow::Node getSql();
   }
 }
 
