@@ -1073,7 +1073,8 @@ module PrivateDjango {
 
       override DataFlow::Node getSql() {
         result in [
-            super.getArg([0, 1, 3, 4]), super.getArgByName(["select", "where", "tables", "order_by"])
+            super.getArg([0, 1, 3, 4]),
+            super.getArgByName(["select", "where", "tables", "order_by"])
           ]
       }
     }

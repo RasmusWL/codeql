@@ -83,7 +83,9 @@ private module Aiomysql {
   class AwaitedSAConnectionExecuteCall extends SqlExecution::Range {
     SAConnectionExecuteCall execute;
 
-    AwaitedSAConnectionExecuteCall() { this = execute.(API::CallNode).getReturn().getAwaited().asSource() }
+    AwaitedSAConnectionExecuteCall() {
+      this = execute.(API::CallNode).getReturn().getAwaited().asSource()
+    }
 
     override DataFlow::Node getSql() { result = execute.getSql() }
   }

@@ -152,7 +152,9 @@ module PEP249 {
   private class AwaitedAsyncExecuteMethodCall extends SqlExecution::Range {
     AsyncExecuteMethodCall execute;
 
-    AwaitedAsyncExecuteMethodCall() { this = execute.(API::CallNode).getReturn().getAwaited().asSource() }
+    AwaitedAsyncExecuteMethodCall() {
+      this = execute.(API::CallNode).getReturn().getAwaited().asSource()
+    }
 
     override DataFlow::Node getSql() { result = execute.getSql() }
   }

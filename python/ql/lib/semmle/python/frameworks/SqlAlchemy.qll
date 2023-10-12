@@ -241,7 +241,8 @@ module SqlAlchemy {
    *  - https://docs.sqlalchemy.org/en/14/core/future.html#sqlalchemy.future.Connection.execute
    *  - https://docs.sqlalchemy.org/en/14/orm/session_api.html#sqlalchemy.orm.Session.execute
    */
-  private class SqlAlchemyExecuteCall extends SqlExecution::Range instanceof DataFlow::MethodCallNode {
+  private class SqlAlchemyExecuteCall extends SqlExecution::Range instanceof DataFlow::MethodCallNode
+  {
     SqlAlchemyExecuteCall() {
       this.calls(Engine::instance(), "execute")
       or
@@ -250,7 +251,9 @@ module SqlAlchemy {
       this.calls(Session::instance(), "execute")
     }
 
-    override DataFlow::Node getSql() { result in [super.getArg(0), super.getArgByName("statement")] }
+    override DataFlow::Node getSql() {
+      result in [super.getArg(0), super.getArgByName("statement")]
+    }
   }
 
   /**
@@ -259,10 +262,13 @@ module SqlAlchemy {
    *  - https://docs.sqlalchemy.org/en/14/core/connections.html#sqlalchemy.engine.Connection.exec_driver_sql
    *  - https://docs.sqlalchemy.org/en/14/core/future.html#sqlalchemy.future.Connection.exec_driver_sql
    */
-  private class SqlAlchemyExecDriverSqlCall extends SqlExecution::Range instanceof DataFlow::MethodCallNode {
+  private class SqlAlchemyExecDriverSqlCall extends SqlExecution::Range instanceof DataFlow::MethodCallNode
+  {
     SqlAlchemyExecDriverSqlCall() { this.calls(Connection::instance(), "exec_driver_sql") }
 
-    override DataFlow::Node getSql() { result in [super.getArg(0), super.getArgByName("statement")] }
+    override DataFlow::Node getSql() {
+      result in [super.getArg(0), super.getArgByName("statement")]
+    }
   }
 
   /**
@@ -273,7 +279,8 @@ module SqlAlchemy {
    *  - https://docs.sqlalchemy.org/en/14/core/future.html#sqlalchemy.future.Connection.scalar
    *  - https://docs.sqlalchemy.org/en/14/orm/session_api.html#sqlalchemy.orm.Session.scalar
    */
-  private class SqlAlchemyScalarCall extends SqlExecution::Range instanceof DataFlow::MethodCallNode {
+  private class SqlAlchemyScalarCall extends SqlExecution::Range instanceof DataFlow::MethodCallNode
+  {
     SqlAlchemyScalarCall() {
       this.calls(Engine::instance(), "scalar")
       or
@@ -320,7 +327,8 @@ module SqlAlchemy {
      * A construction of a `sqlalchemy.sql.expression.TextClause`, which represents a
      * textual SQL string directly.
      */
-    abstract class TextClauseConstruction extends SqlConstruction::Range instanceof DataFlow::CallCfgNode {
+    abstract class TextClauseConstruction extends SqlConstruction::Range instanceof DataFlow::CallCfgNode
+    {
       /** Gets the argument that specifies the SQL text. */
       override DataFlow::Node getSql() { result in [super.getArg(0), super.getArgByName("text")] }
     }
