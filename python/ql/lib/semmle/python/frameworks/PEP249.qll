@@ -67,7 +67,7 @@ module PEP249 {
    * Note: While `execute` method on a connection is not part of PEP249, if it is used, we
    * recognize it as an alias for constructing a cursor and calling `execute` on it.
    */
-  private class ExecuteMethodCall extends SqlExecution::Range, API::CallNode {
+  private class ExecuteMethodCall extends SqlExecution::Range instanceof API::CallNode {
     ExecuteMethodCall() {
       exists(API::Node start |
         start instanceof DatabaseCursor or start instanceof DatabaseConnection
@@ -77,7 +77,7 @@ module PEP249 {
     }
 
     override DataFlow::Node getSql() {
-      result in [this.getArg(0), this.getArgByName(getSqlKwargName()),]
+      result in [super.getArg(0), super.getArgByName(getSqlKwargName()),]
     }
   }
 
@@ -134,7 +134,7 @@ module PEP249 {
    *
    * See ExecuteMethodCall for more details.
    */
-  private class AsyncExecuteMethodCall extends SqlConstruction::Range, API::CallNode {
+  private class AsyncExecuteMethodCall extends SqlConstruction::Range instanceof API::CallNode {
     AsyncExecuteMethodCall() {
       exists(API::Node start |
         start instanceof AsyncDatabaseCursor or start instanceof AsyncDatabaseConnection
@@ -144,7 +144,7 @@ module PEP249 {
     }
 
     override DataFlow::Node getSql() {
-      result in [this.getArg(0), this.getArgByName(getSqlKwargName()),]
+      result in [super.getArg(0), super.getArgByName(getSqlKwargName()),]
     }
   }
 
@@ -152,7 +152,7 @@ module PEP249 {
   private class AwaitedAsyncExecuteMethodCall extends SqlExecution::Range {
     AsyncExecuteMethodCall execute;
 
-    AwaitedAsyncExecuteMethodCall() { this = execute.getReturn().getAwaited().asSource() }
+    AwaitedAsyncExecuteMethodCall() { this = execute.(API::CallNode).getReturn().getAwaited().asSource() }
 
     override DataFlow::Node getSql() { result = execute.getSql() }
   }
@@ -288,13 +288,13 @@ module PEP249 {
    * Note: While `execute` method on a connection is not part of PEP249, if it is used, we
    * recognize it as an alias for constructing a cursor and calling `execute` on it.
    */
-  private class ExecuteCall extends SqlExecution::Range, DataFlow::CallCfgNode {
+  private class ExecuteCall extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
     ExecuteCall() {
       this.getFunction() = execute() and
       not this instanceof ExecuteMethodCall
     }
 
-    override DataFlow::Node getSql() { result in [this.getArg(0), this.getArgByName("sql")] }
+    override DataFlow::Node getSql() { result in [super.getArg(0), super.getArgByName("sql")] }
   }
 
   private DataFlow::TypeTrackingNode executemany(DataFlow::TypeTracker t) {
@@ -314,14 +314,14 @@ module PEP249 {
    * Note: While `executemany` method on a connection is not part of PEP249, if it is used, we
    * recognize it as an alias for constructing a cursor and calling `executemany` on it.
    */
-  private class ExecutemanyCall extends SqlExecution::Range, DataFlow::CallCfgNode {
+  private class ExecutemanyCall extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
     ExecutemanyCall() {
       this.getFunction() = executemany() and
       not this instanceof ExecuteMethodCall
     }
 
     override DataFlow::Node getSql() {
-      result in [this.getArg(0), this.getArgByName(getSqlKwargName())]
+      result in [super.getArg(0), super.getArgByName(getSqlKwargName())]
     }
   }
 }

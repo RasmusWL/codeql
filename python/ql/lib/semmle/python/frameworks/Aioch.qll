@@ -39,13 +39,13 @@ module Aioch {
    * - https://clickhouse-driver.readthedocs.io/en/latest/api.html#clickhouse_driver.Client.execute_iter
    * - https://clickhouse-driver.readthedocs.io/en/latest/api.html#clickhouse_driver.Client.execute_with_progress
    */
-  class ClientExecuteCall extends SqlExecution::Range, DataFlow::CallCfgNode {
+  class ClientExecuteCall extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
     ClientExecuteCall() {
       exists(string methodName | methodName = ClickhouseDriver::getExecuteMethodName() |
         this = Client::instance().getMember(methodName).getACall()
       )
     }
 
-    override DataFlow::Node getSql() { result in [this.getArg(0), this.getArgByName("query")] }
+    override DataFlow::Node getSql() { result in [super.getArg(0), super.getArgByName("query")] }
   }
 }

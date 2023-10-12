@@ -181,11 +181,11 @@ private module Peewee {
    * A call to the `execute_sql` method on a `peewee.Database` instance.
    * See https://docs.peewee-orm.com/en/latest/peewee/api.html#Database.execute_sql.
    */
-  class PeeweeDatabaseExecuteSqlCall extends SqlExecution::Range, DataFlow::CallCfgNode {
+  class PeeweeDatabaseExecuteSqlCall extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
     PeeweeDatabaseExecuteSqlCall() {
       this = Database::instance().getMember("execute_sql").getACall()
     }
 
-    override DataFlow::Node getSql() { result in [this.getArg(0), this.getArgByName("sql")] }
+    override DataFlow::Node getSql() { result in [super.getArg(0), super.getArgByName("sql")] }
   }
 }

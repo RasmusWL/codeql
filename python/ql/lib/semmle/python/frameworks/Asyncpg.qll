@@ -58,12 +58,12 @@ private module Asyncpg {
    * The creation of the `Cursor` executes the query.
    */
   module Cursor {
-    class CursorConstruction extends SqlConstruction::Range, API::CallNode {
+    class CursorConstruction extends SqlConstruction::Range instanceof API::CallNode {
       CursorConstruction() {
         this = ModelOutput::getATypeNode("asyncpg.Connection").getMember("cursor").getACall()
       }
 
-      override DataFlow::Node getSql() { result = this.getParameter(0, "query").asSink() }
+      override DataFlow::Node getSql() { result = super.getParameter(0, "query").asSink() }
     }
 
     /** The creation of a `Cursor` executes the associated query. */
@@ -73,7 +73,7 @@ private module Asyncpg {
       CursorCreation() {
         exists(CursorConstruction c |
           sql = c.getSql() and
-          this = c.getReturn().getAwaited().asSource()
+          this = c.(API::CallNode).getReturn().getAwaited().asSource()
         )
         or
         exists(API::CallNode prepareCall |

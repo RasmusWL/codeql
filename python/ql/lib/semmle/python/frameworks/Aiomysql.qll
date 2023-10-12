@@ -70,10 +70,10 @@ private module Aiomysql {
    * A query. Calling `execute` on a `SAConnection` constructs a query.
    * See https://aiomysql.readthedocs.io/en/stable/sa.html#aiomysql.sa.SAConnection.execute
    */
-  class SAConnectionExecuteCall extends SqlConstruction::Range, API::CallNode {
+  class SAConnectionExecuteCall extends SqlConstruction::Range instanceof API::CallNode {
     SAConnectionExecuteCall() { this = saConnection().getMember("execute").getACall() }
 
-    override DataFlow::Node getSql() { result = this.getParameter(0, "query").asSink() }
+    override DataFlow::Node getSql() { result = super.getParameter(0, "query").asSink() }
   }
 
   /**
@@ -83,7 +83,7 @@ private module Aiomysql {
   class AwaitedSAConnectionExecuteCall extends SqlExecution::Range {
     SAConnectionExecuteCall execute;
 
-    AwaitedSAConnectionExecuteCall() { this = execute.getReturn().getAwaited().asSource() }
+    AwaitedSAConnectionExecuteCall() { this = execute.(API::CallNode).getReturn().getAwaited().asSource() }
 
     override DataFlow::Node getSql() { result = execute.getSql() }
   }

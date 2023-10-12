@@ -1017,7 +1017,7 @@ module PrivateDjango {
      *
      * See https://docs.djangoproject.com/en/3.1/ref/models/querysets/#annotate
      */
-    private class ObjectsAnnotate extends SqlExecution::Range, DataFlow::CallCfgNode {
+    private class ObjectsAnnotate extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
       DataFlow::Node sql;
 
       ObjectsAnnotate() {
@@ -1035,7 +1035,7 @@ module PrivateDjango {
      *
      * See https://docs.djangoproject.com/en/3.2/ref/models/querysets/#alias
      */
-    private class ObjectsAlias extends SqlExecution::Range, DataFlow::CallCfgNode {
+    private class ObjectsAlias extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
       DataFlow::Node sql;
 
       ObjectsAlias() {
@@ -1055,10 +1055,10 @@ module PrivateDjango {
      * - https://docs.djangoproject.com/en/3.1/topics/db/sql/#django.db.models.Manager.raw
      * - https://docs.djangoproject.com/en/3.1/ref/models/querysets/#raw
      */
-    private class ObjectsRaw extends SqlExecution::Range, DataFlow::CallCfgNode {
+    private class ObjectsRaw extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
       ObjectsRaw() { this = DjangoImpl::DB::Models::querySetReturningMethod(_, "raw").getACall() }
 
-      override DataFlow::Node getSql() { result = this.getArg(0) }
+      override DataFlow::Node getSql() { result = super.getArg(0) }
     }
 
     /**
@@ -1066,14 +1066,14 @@ module PrivateDjango {
      *
      * See https://docs.djangoproject.com/en/3.1/ref/models/querysets/#extra
      */
-    private class ObjectsExtra extends SqlExecution::Range, DataFlow::CallCfgNode {
+    private class ObjectsExtra extends SqlExecution::Range instanceof DataFlow::CallCfgNode {
       ObjectsExtra() {
         this = DjangoImpl::DB::Models::querySetReturningMethod(_, "extra").getACall()
       }
 
       override DataFlow::Node getSql() {
         result in [
-            this.getArg([0, 1, 3, 4]), this.getArgByName(["select", "where", "tables", "order_by"])
+            super.getArg([0, 1, 3, 4]), super.getArgByName(["select", "where", "tables", "order_by"])
           ]
       }
     }

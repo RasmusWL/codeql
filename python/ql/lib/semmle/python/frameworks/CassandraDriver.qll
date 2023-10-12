@@ -35,27 +35,27 @@ private module CassandraDriver {
   /**
    * see https://docs.datastax.com/en/developer/python-driver/3.25/api/cassandra/cluster/#cassandra.cluster.Session.execute
    */
-  class CassandraSessionExecuteCall extends SqlExecution::Range, API::CallNode {
+  class CassandraSessionExecuteCall extends SqlExecution::Range instanceof API::CallNode {
     CassandraSessionExecuteCall() { this = session().getMember("execute").getACall() }
 
-    override DataFlow::Node getSql() { result = this.getParameter(0, "query").asSink() }
+    override DataFlow::Node getSql() { result = super.getParameter(0, "query").asSink() }
   }
 
   /**
    * see https://docs.datastax.com/en/developer/python-driver/3.25/api/cassandra/cluster/#cassandra.cluster.Session.execute_async
    */
-  class CassandraSessionExecuteAsyncCall extends SqlConstruction::Range, API::CallNode {
+  class CassandraSessionExecuteAsyncCall extends SqlConstruction::Range instanceof API::CallNode {
     CassandraSessionExecuteAsyncCall() { this = session().getMember("execute_async").getACall() }
 
-    override DataFlow::Node getSql() { result = this.getParameter(0, "query").asSink() }
+    override DataFlow::Node getSql() { result = super.getParameter(0, "query").asSink() }
   }
 
   /**
    * see https://docs.datastax.com/en/developer/python-driver/3.25/api/cassandra/cluster/#cassandra.cluster.Session.prepare
    */
-  class CassandraSessionPrepareCall extends SqlConstruction::Range, API::CallNode {
+  class CassandraSessionPrepareCall extends SqlConstruction::Range instanceof API::CallNode {
     CassandraSessionPrepareCall() { this = session().getMember("prepare").getACall() }
 
-    override DataFlow::Node getSql() { result = this.getParameter(0, "query").asSink() }
+    override DataFlow::Node getSql() { result = super.getParameter(0, "query").asSink() }
   }
 }
