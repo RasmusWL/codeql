@@ -280,6 +280,9 @@ module Stdlib {
         this = API::moduleImport("logging").getMember("root").asSource()
         or
         this = API::moduleImport("logging").getMember("getLogger").getACall()
+        or
+        // heuristic for loggers defined in third party packages
+        this.(DataFlow::MethodCallNode).getMethodName() in ["getLogger", "get_logger"]
       }
     }
 
