@@ -1,0 +1,19 @@
+Performing calculations on uncontrolled data can result in integer overflows unless the input is validated.
+
+If the data is not under your control, and can take extremely large values, even arithmetic operations that would usually result in a small change in magnitude may result in overflows.
+
+
+## Recommendation
+Always guard against overflow in arithmetic operations on uncontrolled data by doing one of the following:
+
+* Validate the data.
+* Define a guard on the arithmetic expression, so that the operation is performed only if the result can be known to be less than, or equal to, the maximum value for the type, for example `INT_MAX`.
+* Use a wider type, so that larger input values do not cause overflow.
+
+## Example
+In this example, a random integer is generated. Because the value is not controlled by the programmer, it could be extremely large. Performing arithmetic operations on this value could therefore cause an overflow. To avoid this happening, the example shows how to perform a check before performing an arithmetic operation.
+
+{% sample src="ArithmeticUncontrolled.c" %}
+
+## References
+{% cwe-references %}

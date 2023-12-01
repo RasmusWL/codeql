@@ -1,0 +1,6 @@
+The leap year rule for the Gregorian calendar, which has become the internationally accepted civil calendar, is: every year that is exactly divisible by four is a leap year, except for years that are exactly divisible by 100, but these centurial years are leap years if they are exactly divisible by 400.
+
+A leap year bug occurs when software (in any language) is written without consideration of leap year logic, or with flawed logic to calculate leap years; which typically results in incorrect results.
+
+The impact of these bugs may range from almost unnoticeable bugs such as an incorrect date, to severe bugs that affect reliability, availability or even the security of the affected system.
+

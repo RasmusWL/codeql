@@ -1,0 +1,13 @@
+Many programmers mistakenly believe that information stored in cookies and hidden HTML form fields is tamper-proof and cannot be changed by the user. Hence they might try to verify other request data by comparing it against this information, for example by checking whether a user name embedded in a request parameter matches data stored in an (unsigned) cookie. In fact, however, all of these sources of data are user-controlled, so a malicious user can easily bypass such checks to gain unauthorized access to protected functionality or data.
+
+
+## Recommendation
+{% render "recommendation.inc.qhelp.md" %}
+
+
+## Example
+{% render "example.inc.qhelp.md" %}
+
+
+## References
+{% cwe-references %}

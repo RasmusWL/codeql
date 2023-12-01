@@ -1,0 +1,24 @@
+AngularJS uses filters to ensure that the URLs used for sourcing AngularJS templates and other script-running URLs are safe. One such filter is a whitelist of URL patterns to allow.
+
+A URL pattern that is too permissive can cause security vulnerabilities.
+
+
+## Recommendation
+Make the whitelist URL patterns as restrictive as possible.
+
+
+## Example
+The following example shows an AngularJS application with whitelist URL patterns that all are too permissive.
+
+{% sample src="examples/InsecureUrlWhitelist.js" %}
+This is problematic, since the four patterns match the following malicious URLs, respectively:
+
+* `javascript://example.org/a%0A%0Dalert(1)` (`%0A%0D` is a linebreak)
+* `https://evil.com/?ignore=://example.com/a`
+* `https://example.evil.com`
+* `https://example.evilTld`
+
+## References
+* OWASP/Google presentation: [Securing AngularJS Applications](https://www.owasp.org/images/6/6e/Benelus_day_20161125_S_Lekies_Securing_AngularJS_Applications.pdf)
+* AngularJS Developer Guide: [Format of items in resourceUrlWhitelist/Blacklist](https://docs.angularjs.org/api/ng/service/$sce#resourceUrlPatternItem).
+{% cwe-references %}

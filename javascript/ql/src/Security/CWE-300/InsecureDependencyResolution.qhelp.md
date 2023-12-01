@@ -1,0 +1,23 @@
+Using an insecure protocol like HTTP or FTP to download build dependencies makes the build process vulnerable to a man-in-the-middle (MITM) attack.
+
+This can allow attackers to inject malicious code into the downloaded dependencies, and thereby infect the build artifacts and execute arbitrary code on the machine building the artifacts.
+
+
+## Recommendation
+Always use a secure protocol, such as HTTPS or SFTP, when downloading artifacts from an URL.
+
+
+## Example
+The below example shows a `package.json` file that downloads a dependency using the insecure HTTP protocol.
+
+{% sample src="examples/bad-package.json" %}
+The fix is to change the protocol to HTTPS.
+
+{% sample src="examples/good-package.json" %}
+
+## References
+* Jonathan Leitschuh: [ Want to take over the Java ecosystem? All you need is a MITM! ](https://infosecwriteups.com/want-to-take-over-the-java-ecosystem-all-you-need-is-a-mitm-1fc329d898fb)
+* Max Veytsman: [ How to take over the computer of any Java (or Closure or Scala) Developer. ](https://max.computer/blog/how-to-take-over-the-computer-of-any-java-or-clojure-or-scala-developer/)
+* Wikipedia: [Supply chain attack.](https://en.wikipedia.org/wiki/Supply_chain_attack)
+* Wikipedia: [Man-in-the-middle attack.](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
+{% cwe-references %}

@@ -1,0 +1,6 @@
+Commented-out code is distracting and confusing for developers who read the surrounding code, and its significance is often unclear. It will not get compiled or tested when the code around it changes, so it's likely to break over time. For these reasons, commented-out code should be avoided.
+
+
+## Recommendation
+Remove or reinstate the commented-out code. If you want to include a snippet of example code in a comment, consider enclosing it in quotes or marking it up as appropriate for the source language.
+

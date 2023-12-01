@@ -1,0 +1,20 @@
+Sensitive information that is stored unencrypted is accessible to an attacker who gains access to the storage. This is particularly important for cookies, which are stored on the machine of the end-user.
+
+
+## Recommendation
+Ensure that sensitive information is always encrypted before being stored. For ASP.NET applications, the `System.Web.Security.MachineKey` class may be used to encode sensitive information.
+
+If possible, avoid placing sensitive information in cookies all together. Instead, prefer storing a key in the cookie that can be used to lookup the sensitive information.
+
+In general, decrypt sensitive information only at the point where it is necessary for it to be used in cleartext.
+
+
+## Example
+The following example shows two ways of storing user credentials in a cookie. In the 'BAD' case, the credentials are simply stored in cleartext. In the 'GOOD' case, the credentials are protected before storing them, using `MachineKey.Protect`, wrapped in a utility method.
+
+{% sample src="CleartextStorage.cs" %}
+
+## References
+* M. Dowd, J. McDonald and J. Schuhm, *The Art of Software Security Assessment*, 1st Edition, Chapter 2 - 'Common Vulnerabilities of Encryption', p. 43. Addison Wesley, 2006.
+* M. Howard and D. LeBlanc, *Writing Secure Code*, 2nd Edition, Chapter 9 - 'Protecting Secret Data', p. 299. Microsoft, 2002.
+{% cwe-references %}
