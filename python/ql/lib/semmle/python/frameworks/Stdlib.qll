@@ -4439,7 +4439,9 @@ module StdlibPrivate {
       exists(DataFlow::DictionaryElementContent dc | key = dc.getKey())
     }
 
-    override DataFlow::CallCfgNode getACall() {
+    override DataFlow::CallCfgNode getACall() { none() }
+
+    override DataFlow::CallCfgNode getACallSimple() {
       result.(DataFlow::MethodCallNode).getMethodName() = "get" and
       result.getArg(0).getALocalSource().asExpr().(StrConst).getText() = key
     }
@@ -4462,7 +4464,9 @@ module StdlibPrivate {
   class DictGetAnySummary extends SummarizedCallable {
     DictGetAnySummary() { this = "dict.get" }
 
-    override DataFlow::CallCfgNode getACall() {
+    override DataFlow::CallCfgNode getACall() { none() }
+
+    override DataFlow::CallCfgNode getACallSimple() {
       result.(DataFlow::MethodCallNode).getMethodName() = "get"
     }
 
@@ -4485,7 +4489,9 @@ module StdlibPrivate {
   class DictPopitemSummary extends SummarizedCallable {
     DictPopitemSummary() { this = "dict.popitem" }
 
-    override DataFlow::CallCfgNode getACall() {
+    override DataFlow::CallCfgNode getACall() { none() }
+
+    override DataFlow::CallCfgNode getACallSimple() {
       result.(DataFlow::MethodCallNode).getMethodName() = "popitem"
     }
 
@@ -4509,7 +4515,9 @@ module StdlibPrivate {
   class DictSetdefaultSummary extends SummarizedCallable {
     DictSetdefaultSummary() { this = "dict.setdefault" }
 
-    override DataFlow::CallCfgNode getACall() {
+    override DataFlow::CallCfgNode getACall() { none() }
+
+    override DataFlow::CallCfgNode getACallSimple() {
       result.(DataFlow::MethodCallNode).calls(_, "setdefault")
     }
 
@@ -4539,7 +4547,9 @@ module StdlibPrivate {
       exists(DataFlow::DictionaryElementContent dc | key = dc.getKey())
     }
 
-    override DataFlow::CallCfgNode getACall() {
+    override DataFlow::CallCfgNode getACall() { none() }
+
+    override DataFlow::CallCfgNode getACallSimple() {
       result.(DataFlow::MethodCallNode).getMethodName() = "setdefault" and
       result.getArg(0).getALocalSource().asExpr().(StrConst).getText() = key
     }

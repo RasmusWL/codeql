@@ -1697,7 +1697,7 @@ DataFlowCallable viableCallable(DataFlowCall call) {
   // Instead we resolve the call from the summary.
   exists(LibraryCallable callable |
     result = TLibraryCallable(callable) and
-    call.getNode() = callable.getACall().getNode() and
+    call.getNode() in [callable.getACall().getNode(), callable.getACallSimple().getNode()] and
     call instanceof PotentialLibraryCall
   )
 }
