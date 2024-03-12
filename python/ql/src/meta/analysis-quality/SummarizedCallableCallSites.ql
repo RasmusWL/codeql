@@ -18,6 +18,8 @@ where
   (
     useSite = target.getACall() and kind = "Call"
     or
+    useSite = target.getACallSimple() and kind = "CallSimple"
+    or
     useSite = target.getACallback() and kind = "Callback"
   ) and
   not useSite.getLocation().getFile() instanceof IgnoredFile
