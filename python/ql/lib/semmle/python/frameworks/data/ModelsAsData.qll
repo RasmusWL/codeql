@@ -21,15 +21,15 @@ private import semmle.python.dataflow.new.FlowSummary
 private import semmle.python.Concepts
 
 /**
- * A threat-model flow source originating from a data extension.
+ * A flow source originating from a data extension.
  */
-private class ThreatModelSourceFromDataExtension extends ThreatModelSource::Range {
-  ThreatModelSourceFromDataExtension() { this = ModelOutput::getASourceNode(_).asSource() }
+private class FlowSourceFromDataExtension extends FlowSource::Range {
+  FlowSourceFromDataExtension() { this = ModelOutput::getASourceNode(_).asSource() }
 
   override string getThreatModel() { this = ModelOutput::getASourceNode(result).asSource() }
 
   override string getSourceType() {
-    result = "Source node (" + this.getThreatModel() + ") [from data-extension]"
+    result = "Flow source (" + this.getThreatModel() + ") [from data-extension]"
   }
 }
 

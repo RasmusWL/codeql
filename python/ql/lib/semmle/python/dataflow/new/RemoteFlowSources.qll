@@ -15,7 +15,7 @@ private import semmle.python.Concepts
  * Extend this class to refine existing API models. If you want to model new APIs,
  * extend `RemoteFlowSource::Range` instead.
  */
-class RemoteFlowSource extends ThreatModelSource instanceof RemoteFlowSource::Range { }
+class RemoteFlowSource extends FlowSource instanceof RemoteFlowSource::Range { }
 
 /** Provides a class for modeling new sources of remote user input. */
 module RemoteFlowSource {
@@ -25,7 +25,7 @@ module RemoteFlowSource {
    * Extend this class to model new APIs. If you want to refine existing API models,
    * extend `RemoteFlowSource` instead.
    */
-  abstract class Range extends ThreatModelSource::Range {
+  abstract class Range extends FlowSource::Range {
     override string getThreatModel() { result = "remote" }
   }
 }

@@ -82,7 +82,7 @@ module PEP249 {
   }
 
   /** A call to a method that fetches rows from a previous execution. */
-  private class FetchMethodCall extends ThreatModelSource::Range, API::CallNode {
+  private class FetchMethodCall extends FlowSource::Range, API::CallNode {
     FetchMethodCall() {
       exists(API::Node start |
         start instanceof DatabaseCursor or start instanceof DatabaseConnection

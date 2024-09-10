@@ -16,9 +16,9 @@ private import codeql.threatmodels.ThreatModels
  * A data flow source, for a specific threat-model.
  *
  * Extend this class to refine existing API models. If you want to model new APIs,
- * extend `ThreatModelSource::Range` instead.
+ * extend `FlowSource::Range` instead.
  */
-class ThreatModelSource extends DataFlow::Node instanceof ThreatModelSource::Range {
+class FlowSource extends DataFlow::Node instanceof FlowSource::Range {
   /**
    * Gets a string that represents the source kind with respect to threat modeling.
    *
@@ -28,17 +28,17 @@ class ThreatModelSource extends DataFlow::Node instanceof ThreatModelSource::Ran
    */
   string getThreatModel() { result = super.getThreatModel() }
 
-  /** Gets a string that describes the type of this threat-model source. */
+  /** Gets a string that describes the type of this source. */
   string getSourceType() { result = super.getSourceType() }
 }
 
 /** Provides a class for modeling new sources for specific threat-models. */
-module ThreatModelSource {
+module FlowSource {
   /**
    * A data flow source, for a specific threat-model.
    *
    * Extend this class to model new APIs. If you want to refine existing API models,
-   * extend `ThreatModelSource` instead.
+   * extend `FlowSource` instead.
    */
   abstract class Range extends DataFlow::Node {
     /**
@@ -50,7 +50,7 @@ module ThreatModelSource {
      */
     abstract string getThreatModel();
 
-    /** Gets a string that describes the type of this threat-model source. */
+    /** Gets a string that describes the type of this source. */
     abstract string getSourceType();
   }
 }
@@ -62,7 +62,7 @@ class ActiveThreatModelSource extends DataFlow::Node {
   ActiveThreatModelSource() {
     exists(string kind |
       currentThreatModel(kind) and
-      this.(ThreatModelSource).getThreatModel() = kind
+      this.(FlowSource).getThreatModel() = kind
     )
   }
 }
